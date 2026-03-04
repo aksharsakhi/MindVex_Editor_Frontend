@@ -178,7 +178,24 @@ export function useGit() {
         const data: Record<string, { data: any; encoding?: string }> = {};
 
         for (const [key, value] of Object.entries(fileData.current)) {
-          data[key] = value;
+          // Skip .git directory files — only include actual repo files
+          if (key.startsWith('.git/') || key === '.git') {
+            continue;
+          }
+
+          // Convert to the format expected by importGitRepoToWorkbench
+          const content = value.data instanceof Uint8Array
+            ? new TextDecoder().decode(value.data)
+            : typeof value.data === 'string'
+              ? value.data
+              : String(value.data);
+
+          data[key] = {
+            data: content,
+            encoding: value.encoding || 'utf8',
+            // Add type and content fields for importGitRepoToWorkbench compatibility
+            ...(({ type: 'file', content } as any)),
+          };
         }
 
         return { workdir: webcontainer.workdir, data };
