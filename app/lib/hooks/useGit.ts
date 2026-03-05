@@ -14,78 +14,14 @@ export function useGit() {
     });
   }, []);
 
-<<<<<<< HEAD
-=======
-  // Fetch GitHub token if user is authenticated
-  useEffect(() => {
-    const fetchGitHubToken = async () => {
-      try {
-        const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
-        const token = localStorage.getItem('auth_token');
-
-        if (!token) {
-          return;
-        }
-
-        const response = await fetch(`${API_BASE_URL}/users/me/github-connection`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = (await response.json()) as { connected?: boolean; accessToken?: string };
-          if (data.connected && data.accessToken) {
-            setGithubToken(data.accessToken);
-          }
-        }
-      } catch (error) {
-        console.log('GitHub token not available:', error);
-      }
-    };
-
-    fetchGitHubToken();
-  }, []);
-
->>>>>>> a02f44f7d8eb51f7d0a2dc93a91079abd816b609
   const gitClone = useCallback(
     async (url: string, retryCount = 0) => {
       if (!webcontainer || !ready) {
         throw new Error('Webcontainer not initialized. Please try again later.');
       }
 
-<<<<<<< HEAD
       // Remove branch reference if present (we'll use default branch)
       const baseUrl = url.split('#')[0];
-=======
-      fileData.current = {};
-
-      let branch: string | undefined;
-      let baseUrl = url;
-
-      if (url.includes('#')) {
-        [baseUrl, branch] = url.split('#');
-      }
-
-      /*
-       * Skip Git initialization for now - let isomorphic-git handle it
-       * This avoids potential issues with our manual initialization
-       */
-
-      const headers: {
-        [x: string]: string;
-      } = {
-        'User-Agent': 'mindvex',
-      };
-
-      // Try to use GitHub token first, fallback to saved credentials
-      const auth = lookupSavedPassword(url);
-
-      if (githubToken) {
-        // GitHub's git HTTP protocol requires Basic auth with x-access-token as username
-        headers.Authorization = `Basic ${btoa(`x-access-token:${githubToken}`)}`;
-      } else if (auth) {
-        headers.Authorization = `Basic ${Buffer.from(`${auth.username}:${auth.password}`).toString('base64')}`;
-      }
->>>>>>> a02f44f7d8eb51f7d0a2dc93a91079abd816b609
 
       try {
         // Add a small delay before retrying
@@ -94,7 +30,6 @@ export function useGit() {
           console.log(`Retrying clone (attempt ${retryCount + 1})...`);
         }
 
-<<<<<<< HEAD
         console.log('[Clone] Using backend to clone repository:', baseUrl);
 
         // Use the backend endpoint to clone the repository
@@ -111,17 +46,6 @@ export function useGit() {
 
         const response = await fetch(`${API_BASE_URL}/repositories/clone`, {
           method: 'POST',
-=======
-        await git.clone({
-          fs,
-          http,
-          dir: webcontainer.workdir,
-          url: baseUrl,
-          depth: 1,
-          singleBranch: true,
-          ref: branch,
-          corsProxy: `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api'}/git-proxy`,
->>>>>>> a02f44f7d8eb51f7d0a2dc93a91079abd816b609
           headers,
           body: JSON.stringify({ url: baseUrl }),
         });
@@ -141,7 +65,6 @@ export function useGit() {
         // Write files to WebContainer
         const data: Record<string, { data: any; encoding?: string }> = {};
 
-<<<<<<< HEAD
         for (const [relativePath, fileData] of Object.entries(result.files || {})) {
           const fileInfo = fileData as { content: string; encoding: string; binary: boolean };
           const fullPath = `${webcontainer.workdir}/${relativePath}`;
@@ -168,27 +91,6 @@ export function useGit() {
           } catch (error) {
             console.warn(`[Clone] Failed to write file ${relativePath}:`, error);
           }
-=======
-        for (const [key, value] of Object.entries(fileData.current)) {
-          // Skip .git directory files — only include actual repo files
-          if (key.startsWith('.git/') || key === '.git') {
-            continue;
-          }
-
-          // Convert to the format expected by importGitRepoToWorkbench
-          const content = value.data instanceof Uint8Array
-            ? new TextDecoder().decode(value.data)
-            : typeof value.data === 'string'
-              ? value.data
-              : String(value.data);
-
-          data[key] = {
-            data: content,
-            encoding: value.encoding || 'utf8',
-            // Add type and content fields for importGitRepoToWorkbench compatibility
-            ...(({ type: 'file', content } as any)),
-          };
->>>>>>> a02f44f7d8eb51f7d0a2dc93a91079abd816b609
         }
 
         console.log('[Clone] Successfully loaded files into WebContainer');
