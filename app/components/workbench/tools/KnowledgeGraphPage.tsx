@@ -9,6 +9,8 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { ClientOnly } from 'remix-utils/client-only';
 import { graphCache } from '~/lib/stores/graphCacheStore';
+import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
+import { semanticFilter, getGraphStats } from '~/lib/graph/graphClient';
 import { workbenchStore } from '~/lib/stores/workbench';
 import {
   getUnifiedParser,
@@ -21,7 +23,7 @@ import {
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Maximize, Box, Layout } from 'lucide-react';
+import { Brain, Zap, Info, RefreshCw, Download, Maximize, Box, Layout, Search, Filter, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 // Dynamic imports for force graphs to avoid SSR issues
@@ -57,6 +59,15 @@ export function KnowledgeGraphPage({ onBack }: Props) {
   const [granularity, setGranularity] = useState<'file' | 'symbol'>('file');
   const [originalASTGraph, setOriginalASTGraph] = useState<any>(null);
   const [symbolGraphData, setSymbolGraphData] = useState<any>(null);
+
+  // New features
+  const [semanticQuery, setSemanticQuery] = useState('');
+  const [semanticResults, setSemanticResults] = useState<string[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [complexityFilter, setComplexityFilter] = useState<number>(0);
+  const [showCycles, setShowCycles] = useState(false);
+  const [graphStats, setGraphStats] = useState<any>(null);
+  const [showStats, setShowStats] = useState(false);
 
   // Load initial graph data into originalASTGraph when it first arrives
   useEffect(() => {
@@ -268,11 +279,49 @@ export function KnowledgeGraphPage({ onBack }: Props) {
       linkCount: links.length,
     });
 
+    // Apply filters
+    let filteredNodes = Array.from(nodeMap.values());
+    let filteredLinks = links;
+
+    // Semantic filter: only show nodes matching semantic search
+    if (semanticResults.length > 0) {
+      const semanticSet = new Set(semanticResults);
+      filteredNodes = filteredNodes.filter(n => semanticSet.has(n.id));
+      filteredLinks = filteredLinks.filter((l: any) => semanticSet.has(l.source) && semanticSet.has(l.target));
+    }
+
+    // Complexity filter: hide nodes below threshold
+    if (complexityFilter > 0) {
+      const complexSet = new Set(
+        filteredNodes
+          .filter(n => ((n as any).val || 0) >= complexityFilter)
+          .map(n => n.id)
+      );
+      filteredNodes = filteredNodes.filter(n => complexSet.has(n.id));
+      filteredLinks = filteredLinks.filter((l: any) => complexSet.has(l.source) && complexSet.has(l.target));
+    }
+
+    // Cycles filter: highlight or hide cycle edges
+    if (showCycles) {
+      // Find cycle information from graphData if available
+      const cycleEdges = data.edges?.filter((e: any) => e.data.cycle) || [];
+      filteredLinks = filteredLinks.map((l: any) => {
+        const isCycle = cycleEdges.some((e: any) => 
+          e.data.source === l.source && e.data.target === l.target
+        );
+        return {
+          ...l,
+          color: isCycle ? '#ef4444' : undefined, // Red for cycles
+          width: isCycle ? 2 : 1,
+        };
+      });
+    }
+
     return {
-      nodes: Array.from(nodeMap.values()),
-      links,
+      nodes: filteredNodes,
+      links: filteredLinks,
     };
-  }, [graphData, symbolGraphData, granularity]);
+  }, [graphData, symbolGraphData, granularity, semanticResults, complexityFilter, showCycles]);
 
   function getLanguageColor(lang: string = ''): string {
     const safeLang = lang || '';
@@ -591,6 +640,55 @@ export function KnowledgeGraphPage({ onBack }: Props) {
     toast.success('Analysis exported successfully');
   };
 
+  const handleSemanticSearch = async () => {
+    if (!semanticQuery.trim()) {
+      setSemanticResults([]);
+      return;
+    }
+
+    const recentRepos = (repositoryHistoryStore as any).getRecentRepositories?.(1);
+    if (!recentRepos || recentRepos.length === 0) {
+      toast.warning('No repository context available');
+      return;
+    }
+
+    const repoUrl = recentRepos[0].url;
+    setIsSearching(true);
+
+    try {
+      const result = await semanticFilter(repoUrl, semanticQuery, 20);
+      setSemanticResults(result.matchingNodes);
+      
+      if (result.error) {
+        toast.warning(`Semantic search: ${result.error}`);
+      } else {
+        toast.success(`Found ${result.totalMatches} semantic matches`);
+      }
+    } catch (error) {
+      console.error('Semantic search failed:', error);
+      toast.error('Semantic search failed');
+      setSemanticResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const loadGraphStats = async () => {
+    const recentRepos = (repositoryHistoryStore as any).getRecentRepositories?.(1);
+    if (!recentRepos || recentRepos.length === 0) return;
+
+    const repoUrl = recentRepos[0].url;
+
+    try {
+      const stats = await getGraphStats(repoUrl);
+      setGraphStats(stats);
+      setShowStats(true);
+    } catch (error) {
+      console.error('Stats loading failed:', error);
+      toast.error('Failed to load graph statistics');
+    }
+  };
+
   if (!graphData) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-12">
@@ -688,8 +786,127 @@ export function KnowledgeGraphPage({ onBack }: Props) {
             <Download className="h-3 w-3 mr-1" />
             Export
           </Button>
+          <Button variant="outline" size="sm" onClick={loadGraphStats}>
+            <BarChart3 className="h-3 w-3 mr-1" />
+            Stats
+          </Button>
         </div>
       </div>
+
+      {/* Semantic Search & Filters */}
+      <Card className="mb-4 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Semantic Search */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">Semantic Code Search</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={semanticQuery}
+                onChange={(e) => setSemanticQuery(e.target.value)}
+                onKey Press={(e) => e.key === 'Enter' && handleSemanticSearch()}
+                placeholder="e.g., authentication logic..."
+                className="flex-1 px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+              <Button variant="outline" size="sm" onClick={handleSemanticSearch} disabled={isSearching}>
+                {isSearching ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+              </Button>
+            </div>
+            {semanticResults.length > 0 && (
+              <div className="text-xs text-emerald-400 mt-1">
+                {semanticResults.length} nodes match semantic query
+              </div>
+            )}
+          </div>
+
+          {/* Complexity Filter */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block flex items-center justify-between">
+              <span>Complexity Filter</span>
+              <span className="text-white font-mono">{complexityFilter}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              value={complexityFilter}
+              onChange={(e) => setComplexityFilter(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+              <span>All</span>
+              <span>High</span>
+            </div>
+          </div>
+
+          {/* Cycles Toggle */}
+          <div className="flex items-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCycles(!showCycles)}
+              className="w-full"
+            >
+              {showCycles ? <Eye className="h-3 w-3 mr-1" /> : <EyeOff className="h-3 w-3 mr-1" />}
+              {showCycles ? 'Hide' : 'Show'} Cycles
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Graph Stats Panel */}
+      {showStats && graphStats && (
+        <Card className="mb-4 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Graph Statistics
+            </h4>
+            <Button variant="ghost" size="sm" onClick={() => setShowStats(false)}>
+              Hide
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-xs text-gray-400">Nodes</div>
+              <div className="text-xl font-bold">{graphStats.totalNodes}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Edges</div>
+              <div className="text-xl font-bold">{graphStats.totalEdges}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Avg Complexity</div>
+              <div className="text-xl font-bold">{graphStats.avgComplexity.toFixed(1)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-400">Languages</div>
+              <div className="text-sm">
+                {Object.entries(graphStats.languages).map(([lang, count]: [string, any]) => (
+                  <Badge key={lang} variant="outline" className="mr-1 mb-1 text-[10px]">
+                    {lang}: {count}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+          {graphStats.hubs.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <div className="text-xs text-gray-400 mb-2">Most Connected Nodes (Hubs)</div>
+              <div className="space-y-1">
+                {graphStats.hubs.slice(0, 5).map((hub: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between text-xs bg-gray-800/50 px-3 py-1.5 rounded">
+                    <span className="text-white truncate flex-1">{hub.filePath}</span>
+                    <Badge variant="outline" size="sm" className="ml-2">
+                      {hub.complexity}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Analysis Summary */}
       {analysisResult && (

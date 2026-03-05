@@ -238,3 +238,37 @@ export async function getFallbackGraph(): Promise<GraphResponse> {
     isFallback: true,
   };
 }
+
+/**
+ * Filter graph nodes using semantic search on vector embeddings.
+ */
+export async function semanticFilter(
+  repoUrl: string,
+  query: string,
+  topK: number = 10,
+): Promise<{
+  query: string;
+  matchingNodes: string[];
+  details: Array<{ filePath: string; nodeId: string; chunkIndex: number; preview: string }>;
+  totalMatches: number;
+  error?: string;
+}> {
+  return request(`/api/graph/semantic-filter?repoUrl=${encodeURIComponent(repoUrl)}`, 'POST', {
+    query,
+    topK,
+  });
+}
+
+/**
+ * Get graph statistics including complexity metrics.
+ */
+export async function getGraphStats(repoUrl: string): Promise<{
+  totalNodes: number;
+  totalEdges: number;
+  languages: Record<string, number>;
+  hubs: Array<{ filePath: string; inDegree: number; outDegree: number; complexity: number; language: string }>;
+  nodeStats: Record<string, { filePath: string; inDegree: number; outDegree: number; complexity: number; language: string }>;
+  avgComplexity: number;
+}> {
+  return request(`/api/graph/stats?repoUrl=${encodeURIComponent(repoUrl)}`);
+}
