@@ -20,11 +20,11 @@ export const graphCacheStatus = atom<'idle' | 'building' | 'polling' | 'ready' |
 /**
  * Kick off a graph build for the given repo and poll until the dependency
  * graph is available.  If a cache already exists for the same repoUrl it is
- * returned immediately.
+ * returned immediately unless force=true.
  */
-export async function refreshGraph(repoUrl: string): Promise<void> {
-  // Already cached for this repo
-  if (graphCacheRepoUrl.get() === repoUrl && graphCache.get() !== null) {
+export async function refreshGraph(repoUrl: string, force: boolean = false): Promise<void> {
+  // Already cached for this repo (skip if force=true)
+  if (!force && graphCacheRepoUrl.get() === repoUrl && graphCache.get() !== null) {
     return;
   }
 
