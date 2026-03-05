@@ -282,7 +282,7 @@ export function HomeContent() {
           <h1 className="text-5xl font-bold tracking-tight text-mindvex-elements-textPrimary mb-3">
             Welcome to{' '}
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              MindVex
+              CodeNexus
             </span>
           </h1>
           <p className="text-base text-mindvex-elements-textSecondary max-w-md mx-auto">

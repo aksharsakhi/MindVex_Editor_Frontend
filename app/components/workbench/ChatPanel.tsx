@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import { providersStore, updateProviderSettings } from '~/lib/stores/settings';
+import { workbenchStore } from '~/lib/stores/workbench';
 import { useStore } from '@nanostores/react';
 import { Dropdown, DropdownItem } from '~/components/ui/Dropdown';
 import { Button } from '~/components/ui/Button';
@@ -86,14 +87,38 @@ export function ChatPanel() {
     try {
       const query = input?.toLowerCase() || '';
 
+      const providerInfo = activeProvider
+        ? {
+          name: activeProvider.name,
+          model: activeModel || undefined,
+          apiKey: activeProvider.settings.apiKey,
+          baseUrl: activeProvider.settings.baseUrl,
+        }
+        : undefined;
+
       if (query.includes('wiki') || query.startsWith('generate wiki')) {
         // Wiki generation via dedicated endpoint
-        const wiki = await mcpGetWiki(repoUrl);
-        setMessages((prev) => [...prev, { role: 'assistant', content: wiki.content }]);
+        const wiki = await mcpGetWiki(repoUrl, providerInfo);
+        if (wiki.format === 'multiple-files' && typeof wiki.content === 'object') {
+          let msg = `Generated documentation files:\n`;
+          for (const [filename, fileContent] of Object.entries(wiki.content)) {
+            try {
+              await workbenchStore.createFile(`/${filename}`, fileContent as string);
+              msg += `- ${filename}\n`;
+            } catch (e) {
+              msg += `- ${filename} (Failed)\n`;
+            }
+          }
+          const allFiles = workbenchStore.files.get();
+          workbenchStore.setDocuments(allFiles, false);
+          setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        } else {
+          setMessages((prev) => [...prev, { role: 'assistant', content: typeof wiki.content === 'string' ? wiki.content : "Generated successfully." }]);
+        }
       } else if (query.startsWith('describe module')) {
         // Module description via dedicated endpoint
         const moduleName = input.replace(/describe\s+module\s*/i, '').trim();
-        const desc = await mcpDescribeModule(repoUrl, moduleName);
+        const desc = await mcpDescribeModule(repoUrl, moduleName, providerInfo);
         setMessages((prev) => [...prev, { role: 'assistant', content: desc.description }]);
       } else {
         // AI chat via Selected Provider
@@ -101,15 +126,6 @@ export function ChatPanel() {
           role: m.role,
           content: m.content,
         }));
-
-        const providerInfo = activeProvider
-          ? {
-              name: activeProvider.name,
-              model: activeModel || undefined,
-              apiKey: activeProvider.settings.apiKey,
-              baseUrl: activeProvider.settings.baseUrl,
-            }
-          : undefined;
 
         const response = await mcpChat(repoUrl, input, history, providerInfo);
         setMessages((prev) => [...prev, { role: 'assistant', content: response.reply, model: response.model }]);
@@ -224,11 +240,10 @@ export function ChatPanel() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
-                  : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
-              }`}
+              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
+                ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
+                : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
+                }`}
             >
               <div className="whitespace-pre-wrap break-words">{msg.content}</div>
               {msg.model && msg.role === 'assistant' && (

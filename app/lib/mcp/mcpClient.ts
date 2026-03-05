@@ -28,7 +28,7 @@ export interface McpSearchResponse {
 
 export interface McpWikiResponse {
   repoUrl: string;
-  content: string;
+  content: string | Record<string, string>;
   format: string;
 }
 
@@ -54,24 +54,38 @@ export async function mcpSemanticSearch(repoUrl: string, query: string, topK = 5
   return res.json();
 }
 
-export async function mcpGetWiki(repoUrl: string): Promise<McpWikiResponse> {
+export async function mcpGetWiki(
+  repoUrl: string,
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+): Promise<McpWikiResponse> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/wiki?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
     headers: authHeaders(),
+    body: JSON.stringify({ provider: providerInfo }),
   });
 
   if (!res.ok) {
-    throw new Error(`MCP wiki failed: ${res.status}`);
+    // Try to get the backend's error message
+    let detail = `${res.status}`;
+    try {
+      const errBody = await res.json() as any;
+      detail = errBody.message || errBody.error || detail;
+    } catch { /* ignore */ }
+    throw new Error(detail);
   }
 
   return res.json();
 }
 
-export async function mcpDescribeModule(repoUrl: string, modulePath: string): Promise<McpModuleResponse> {
+export async function mcpDescribeModule(
+  repoUrl: string,
+  modulePath: string,
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+): Promise<McpModuleResponse> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/describe?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ module: modulePath }),
+    body: JSON.stringify({ module: modulePath, provider: providerInfo }),
   });
 
   if (!res.ok) {
