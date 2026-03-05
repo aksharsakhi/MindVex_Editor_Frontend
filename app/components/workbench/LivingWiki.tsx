@@ -267,30 +267,19 @@ function DashboardView({
 
 function DiagramBlock({ lines }: { lines: string[] }) {
   return (
-    <div className="my-6 rounded-2xl overflow-hidden border border-emerald-500/20 bg-[#080808] shadow-2xl shadow-emerald-500/5 group/diag">
-      <div className="flex items-center justify-between px-5 py-3 bg-emerald-500/5 border-b border-emerald-500/10">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <Building2 className="h-3.5 w-3.5 text-emerald-400" />
-          </div>
-          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-            System Architecture Diagram
+    <div className="my-4 rounded-lg border border-gray-700 bg-[#0a0a0a] overflow-hidden">
+      <div className="px-4 py-2 bg-gray-900/50 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+            Architecture Diagram
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[9px] text-emerald-500/50 font-bold uppercase">Visual Rendering Active</span>
-        </div>
       </div>
-      <div className="relative p-6 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.03)_0%,transparent_100%)]">
-        <pre className="text-xs font-mono text-emerald-300/90 leading-relaxed whitespace-pre overflow-x-auto scrollbar-hide">
+      <div className="p-5">
+        <pre className="text-xs font-mono text-gray-300 leading-relaxed whitespace-pre overflow-x-auto">
           {lines.join('\n')}
         </pre>
-        {/* Subtle decorative grid */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.03]"
-          style={{ backgroundImage: 'radial-gradient(#10b981 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}
-        />
       </div>
     </div>
   );
@@ -327,12 +316,12 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
       elements.push(<DiagramBlock key={key} lines={codeLines} />);
     } else {
       elements.push(
-        <div key={key} className="my-5 rounded-xl overflow-hidden border border-white/10 shadow-lg group/code">
-          <div className="bg-[#151515] px-4 py-2 text-[10px] text-gray-500 font-bold font-mono border-b border-white/5 flex items-center justify-between">
-            <span className="uppercase tracking-widest">{codeLang || 'code'}</span>
-            <Code2 className="h-3 w-3 opacity-20" />
+        <div key={key} className="my-4 rounded-lg border border-gray-700 bg-[#0a0a0a] overflow-hidden">
+          <div className="bg-gray-900/50 px-4 py-2 text-[10px] text-gray-400 font-semibold border-b border-gray-700 flex items-center justify-between">
+            <span className="uppercase tracking-wide">{codeLang || 'code'}</span>
+            <Code2 className="h-3 w-3 opacity-40" />
           </div>
-          <pre className="bg-[#0b0b0b] p-5 text-xs text-emerald-300/90 font-mono overflow-x-auto leading-relaxed whitespace-pre scrollbar-hide">
+          <pre className="bg-[#0b0b0b] p-4 text-xs text-gray-300 font-mono overflow-x-auto leading-relaxed whitespace-pre">
             {codeLines.join('\n')}
           </pre>
         </div>,
@@ -422,7 +411,7 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
         {segs.map((s, j) => {
           if (s.startsWith('**') && s.endsWith('**'))
             return (
-              <strong key={j} className="text-gray-200 font-semibold">
+              <strong key={j} className="text-white font-semibold">
                 {s.slice(2, -2)}
               </strong>
             );
@@ -430,7 +419,7 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
             return (
               <code
                 key={j}
-                className="bg-[#1a1a1a] px-1.5 py-0.5 rounded text-emerald-400 text-xs font-mono border border-white/5"
+                className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-200 text-[11px] font-mono border border-gray-700"
               >
                 {s.slice(1, -1)}
               </code>
@@ -467,34 +456,33 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
 
     if (line.startsWith('# '))
       return elements.push(
-        <h1 key={i} className="text-2xl font-bold text-white mt-8 mb-6 pb-4 border-b border-white/10 tracking-tight">
+        <h1 key={i} className="text-2xl font-bold text-white mt-8 mb-5 pb-3 border-b border-gray-700">
           {line.slice(2)}
         </h1>,
       );
     if (line.startsWith('## '))
       return elements.push(
-        <h2 key={i} className="text-base font-bold text-white mt-10 mb-4 flex items-center gap-3">
-          <div className="w-1.5 h-5 bg-emerald-500 rounded-full flex-shrink-0" />
+        <h2 key={i} className="text-xl font-bold text-white mt-7 mb-3">
           {line.slice(3)}
         </h2>,
       );
     if (line.startsWith('### '))
       return elements.push(
-        <h3 key={i} className="text-sm font-semibold text-emerald-400 mt-6 mb-3">
+        <h3 key={i} className="text-base font-semibold text-gray-200 mt-5 mb-2">
           {line.slice(4)}
         </h3>,
       );
     if (line.startsWith('#### '))
       return elements.push(
-        <h4 key={i} className="text-xs font-semibold text-gray-300 mt-4 mb-2">
+        <h4 key={i} className="text-sm font-semibold text-gray-300 mt-4 mb-2">
           {line.slice(5)}
         </h4>,
       );
 
     if (line.startsWith('- ') || line.startsWith('* ')) {
       return elements.push(
-        <div key={i} className="flex items-start gap-3 ml-4 text-gray-300 text-[13px] mb-2 leading-relaxed">
-          <span className="text-emerald-500 mt-1 flex-shrink-0 text-[10px] animate-pulse">▶</span>
+        <div key={i} className="flex items-start gap-2.5 ml-4 text-gray-300 text-[13px] mb-1.5 leading-relaxed">
+          <span className="text-gray-500 mt-1.5 flex-shrink-0">•</span>
           <span className="flex-1">{renderInline(line.slice(2), i)}</span>
         </div>,
       );
@@ -828,14 +816,14 @@ function FileContent({
   if (filename === 'tree.json') return <TreeVisualizer content={content} />;
   if (filename === 'tree.txt')
     return (
-      <div className="bg-[#0a0a0a] rounded-xl border border-white/5 p-6 shadow-inner">
-        <pre className="text-xs font-mono text-emerald-300/80 whitespace-pre leading-loose">{content}</pre>
+      <div className="bg-[#0a0a0a] rounded-lg border border-gray-700 p-5\">
+        <pre className=\"text-xs font-mono text-gray-300 whitespace-pre leading-relaxed\">{content}</pre>
       </div>
     );
   if (filename === 'documentation-health.md') return <HealthReport content={content} onNavigate={onNavigate} />;
   if (filename.endsWith('.json'))
     return (
-      <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap leading-relaxed p-6 bg-[#0c0c0c] rounded-xl border border-white/5">
+      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed p-5 bg-[#0a0a0a] rounded-lg border border-gray-700">
         {(() => {
           try {
             return JSON.stringify(JSON.parse(content), null, 2);
