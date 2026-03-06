@@ -47,9 +47,9 @@ export default function LocalProvidersTab() {
 
         if (!defaultBaseUrl) {
           if (key === 'Ollama') {
-            defaultBaseUrl = 'http://127.0.0.1:11434';
+            defaultBaseUrl = 'http://localhost:11434';
           } else if (key === 'LMStudio') {
-            defaultBaseUrl = 'http://127.0.0.1:1234';
+            defaultBaseUrl = 'http://localhost:1234';
           }
         }
 
@@ -96,8 +96,8 @@ export default function LocalProvidersTab() {
   useEffect(() => {
     const ollamaProvider = filteredProviders.find((p) => p.name === 'Ollama');
 
-    if (ollamaProvider?.settings.enabled) {
-      fetchOllamaModels();
+    if (ollamaProvider?.settings.enabled && ollamaProvider.settings.baseUrl) {
+      fetchOllamaModels(ollamaProvider.settings.baseUrl);
     }
   }, [filteredProviders]);
 
@@ -110,11 +110,11 @@ export default function LocalProvidersTab() {
     }
   }, [filteredProviders]);
 
-  const fetchOllamaModels = async () => {
+  const fetchOllamaModels = async (baseUrl: string) => {
     try {
       setIsLoadingModels(true);
 
-      const response = await fetch(`${OLLAMA_API_URL}/api/tags`);
+      const response = await fetch(`${baseUrl}/api/tags`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch models');
@@ -202,10 +202,13 @@ export default function LocalProvidersTab() {
   );
 
   const handleUpdateOllamaModel = async (modelName: string) => {
+    const ollamaProvider = filteredProviders.find((p) => p.name === 'Ollama');
+    const baseUrl = ollamaProvider?.settings.baseUrl || 'http://localhost:11434';
+
     try {
       setOllamaModels((prev) => prev.map((m) => (m.name === modelName ? { ...m, status: 'updating' } : m)));
 
-      const response = await fetch(`${OLLAMA_API_URL}/api/pull`, {
+      const response = await fetch(`${baseUrl}/api/pull`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: modelName }),
@@ -241,13 +244,13 @@ export default function LocalProvidersTab() {
                 current.map((m) =>
                   m.name === modelName
                     ? {
-                        ...m,
-                        progress: {
-                          current: data.completed,
-                          total: data.total,
-                          status: data.status,
-                        },
-                      }
+                      ...m,
+                      progress: {
+                        current: data.completed,
+                        total: data.total,
+                        status: data.status,
+                      },
+                    }
                     : m,
                 ),
               );
@@ -275,8 +278,11 @@ export default function LocalProvidersTab() {
       return;
     }
 
+    const ollamaProvider = filteredProviders.find((p) => p.name === 'Ollama');
+    const baseUrl = ollamaProvider?.settings.baseUrl || 'http://localhost:11434';
+
     try {
-      const response = await fetch(`${OLLAMA_API_URL}/api/delete`, {
+      const response = await fetch(`${baseUrl}/api/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: modelName }),
@@ -381,7 +387,7 @@ export default function LocalProvidersTab() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={fetchOllamaModels}
+                        onClick={() => fetchOllamaModels(provider.settings.baseUrl || 'http://localhost:11434')}
                         disabled={isLoadingModels}
                         className="bg-transparent hover:bg-mindvex-elements-background-depth-2"
                       >

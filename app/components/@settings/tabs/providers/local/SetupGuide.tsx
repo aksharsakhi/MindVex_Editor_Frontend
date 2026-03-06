@@ -218,6 +218,36 @@ function SetupGuide({ onBack }: { onBack: () => void }) {
             </div>
           </div>
 
+          {/* Network Configuration (CORS) */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-mindvex-elements-textPrimary flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              2. Enable Web Access (CORS)
+            </h4>
+            <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <span className="font-medium text-red-500">Critical: Enable CORS and Web Access</span>
+              </div>
+              <div className="space-y-3">
+                <p className="text-xs text-mindvex-elements-textSecondary">
+                  By default, Ollama only allows connections from the local machine and localhost domains. If you are using MindVex from a cloud domain (like Cloudflare), you must configure Ollama to allow it.
+                </p>
+                <div className="text-xs bg-mindvex-elements-background-depth-4 p-3 rounded font-mono text-mindvex-elements-textPrimary space-y-1">
+                  <div className="flex items-center gap-2 mb-1 text-mindvex-elements-textSecondary"><Monitor className="w-3 h-3" /> <span>macOS / Linux (Terminal)</span></div>
+                  <div>export OLLAMA_ORIGINS="*"</div>
+                  <div>ollama serve</div>
+                  <div className="mt-2 flex items-center gap-2 mb-1 text-mindvex-elements-textSecondary"><Monitor className="w-3 h-3" /> <span>Windows (PowerShell)</span></div>
+                  <div>$env:OLLAMA_ORIGINS="*"</div>
+                  <div>ollama serve</div>
+                </div>
+                <p className="text-xs text-mindvex-elements-textSecondary mt-2 italic">
+                  * Note: If you are accessing MindVex over <strong>HTTPS</strong> in production, you must use <code className="bg-mindvex-elements-background-depth-4 px-1 rounded">http://127.0.0.1:11434</code> or <code className="bg-mindvex-elements-background-depth-4 px-1 rounded">http://localhost:11434</code> as the API endpoint in the settings. Some browsers do not allow HTTPS websites to fetch from an HTTP origin due to "Mixed Content" restrictions, but modern browsers usually exempt <strong>localhost</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Latest Model Recommendations */}
           <div className="space-y-4">
             <h4 className="font-medium text-mindvex-elements-textPrimary flex items-center gap-2">
