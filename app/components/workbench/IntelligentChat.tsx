@@ -125,7 +125,8 @@ export function IntelligentChat() {
 
       if (query.startsWith('generate wiki') || query === 'wiki') {
         const wiki = await mcpGetWiki(repoUrl);
-        setMessages((prev) => [...prev, { role: 'assistant', content: wiki.content, enhancedAnalysis }]);
+        const wikiContent = typeof wiki.content === 'string' ? wiki.content : JSON.stringify(wiki.content, null, 2);
+        setMessages((prev) => [...prev, { role: 'assistant', content: wikiContent, enhancedAnalysis }]);
       } else if (query.startsWith('describe module')) {
         const moduleName = input.replace(/describe\s+module\s*/i, '').trim();
         const desc = await mcpDescribeModule(repoUrl, moduleName);
@@ -139,13 +140,13 @@ export function IntelligentChat() {
 
         const providerInfo = activeProvider
           ? {
-              name: activeProvider.name,
-              model:
-                activeProvider.settings.selectedModel ||
-                (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
-              apiKey: activeProvider.settings.apiKey,
-              baseUrl: activeProvider.settings.baseUrl,
-            }
+            name: activeProvider.name,
+            model:
+              activeProvider.settings.selectedModel ||
+              (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
+            apiKey: activeProvider.settings.apiKey,
+            baseUrl: activeProvider.settings.baseUrl,
+          }
           : undefined;
 
         const response = await mcpChat(repoUrl, input, history, providerInfo);
@@ -223,11 +224,10 @@ export function IntelligentChat() {
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div
-                className={`rounded-2xl px-5 py-3 text-sm leading-relaxed ${
-                  msg.role === 'user'
+                className={`rounded-2xl px-5 py-3 text-sm leading-relaxed ${msg.role === 'user'
                     ? 'bg-orange-500/10 border border-orange-500/20 text-gray-200'
                     : 'bg-[#111] border border-white/5 text-gray-300'
-                }`}
+                  }`}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
                 {msg.model && msg.role === 'assistant' && (

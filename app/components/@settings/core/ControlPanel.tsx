@@ -23,6 +23,8 @@ import { DataTab } from '~/components/@settings/tabs/data/DataTab';
 import { EventLogsTab } from '~/components/@settings/tabs/event-logs/EventLogsTab';
 import CloudProvidersTab from '~/components/@settings/tabs/providers/cloud/CloudProvidersTab';
 import LocalProvidersTab from '~/components/@settings/tabs/providers/local/LocalProvidersTab';
+import AppearanceTab from '~/components/@settings/tabs/appearance/AppearanceTab';
+import ShortcutsTab from '~/components/@settings/tabs/shortcuts/ShortcutsTab';
 
 interface ControlPanelProps {
   open: boolean;
@@ -133,6 +135,10 @@ export const ControlPanel = ({ open, onClose }: ControlPanelProps) => {
         return <LocalProvidersTab />;
       case 'event-logs':
         return <EventLogsTab />;
+      case 'appearance':
+        return <AppearanceTab />;
+      case 'shortcuts':
+        return <ShortcutsTab />;
 
       default:
         return null;

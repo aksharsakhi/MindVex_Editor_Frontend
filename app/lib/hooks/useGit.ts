@@ -54,7 +54,7 @@ export function useGit() {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const result = await response.json();
+        const result = (await response.json()) as any;
 
         if (!result.success) {
           throw new Error(result.message || 'Failed to clone repository');

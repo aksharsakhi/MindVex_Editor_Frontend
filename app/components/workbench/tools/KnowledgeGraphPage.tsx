@@ -744,18 +744,16 @@ export function KnowledgeGraphPage({ onBack }: Props) {
           <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700 mr-2">
             <button
               onClick={() => setViewMode('2d')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                viewMode === '2d' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === '2d' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
+                }`}
             >
               <Layout className="w-3 h-3" />
               2D
             </button>
             <button
               onClick={() => setViewMode('3d')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                viewMode === '3d' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === '3d' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
+                }`}
             >
               <Box className="w-3 h-3" />
               3D
@@ -814,8 +812,7 @@ export function KnowledgeGraphPage({ onBack }: Props) {
                 type="text"
                 value={semanticQuery}
                 onChange={(e) => setSemanticQuery(e.target.value)}
-                onKey
-                Press={(e) => e.key === 'Enter' && handleSemanticSearch()}
+                onKeyUp={(e) => e.key === 'Enter' && handleSemanticSearch()}
                 placeholder="e.g., authentication logic..."
                 className="flex-1 px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               />

@@ -105,12 +105,13 @@ export function RealTimeGraphPage({ onBack }: Props) {
       const modifiedFiles: string[] = [];
 
       Object.entries(filesMap).forEach(([path, dirent]) => {
-        if (dirent.type === 'file') {
+        if (dirent?.type === 'file') {
+          const fileNode = dirent as any;
           const previousContent = previousFileVersions.get(path);
-          if (previousContent !== undefined && previousContent !== dirent.content) {
+          if (previousContent !== undefined && previousContent !== fileNode.content) {
             modifiedFiles.push(path);
           }
-          previousFileVersions.set(path, dirent.content);
+          previousFileVersions.set(path, fileNode.content);
         }
       });
 
@@ -144,7 +145,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
         if (dirent?.type === 'file') {
           try {
             // Parse the changed file
-            const result = await parser.parseCode(dirent.content, filePath);
+            const result = await parser.parseCode((dirent as any).content, filePath);
 
             // Update graph edges based on new imports
             if (localGraphData) {
@@ -187,7 +188,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
                   [
                     {
                       timestamp: new Date(),
-                      type: newEdgesCount > 0 ? 'edge_added' : 'edge_removed',
+                      type: (newEdgesCount > 0 ? 'edge_added' : 'edge_removed') as ChangeHistoryEntry['type'],
                       description: `${filePath}: ${newEdgesCount} edges added, ${edgesRemoved} edges removed`,
                     },
                     ...prev,
@@ -205,12 +206,12 @@ export function RealTimeGraphPage({ onBack }: Props) {
                 setLocalGraphData((prev) =>
                   prev
                     ? {
-                        ...prev,
-                        edges: prev.edges.map((e) => ({
-                          ...e,
-                          data: { ...e.data, isNew: false },
-                        })),
-                      }
+                      ...prev,
+                      edges: prev.edges.map((e) => ({
+                        ...e,
+                        data: { ...e.data, isNew: false },
+                      })),
+                    }
                     : prev,
                 );
               }, 3000);
@@ -236,7 +237,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
           [
             {
               timestamp: new Date(),
-              type: 'sync',
+              type: 'sync' as ChangeHistoryEntry['type'],
               description: `Detected ${changes} file changes`,
             },
             ...prev,
@@ -269,7 +270,7 @@ export function RealTimeGraphPage({ onBack }: Props) {
           {
             selector: 'node',
             style: {
-              'background-color': (ele) => (modifiedNodes.has(ele.id()) ? '#22c55e' : '#0ea5e9'), // green if modified
+              'background-color': (ele: any) => (modifiedNodes.has(ele.id()) ? '#22c55e' : '#0ea5e9'), // green if modified
               label: 'data(label)',
               color: '#fff',
               'text-valign': 'center',
@@ -282,9 +283,9 @@ export function RealTimeGraphPage({ onBack }: Props) {
           {
             selector: 'edge',
             style: {
-              width: (ele) => (ele.data('isNew') ? 3 : 2),
-              'line-color': (ele) => (ele.data('isNew') ? '#22c55e' : '#334155'), // green if new
-              'target-arrow-color': (ele) => (ele.data('isNew') ? '#22c55e' : '#334155'),
+              width: (ele: any) => (ele.data('isNew') ? 3 : 2),
+              'line-color': (ele: any) => (ele.data('isNew') ? '#22c55e' : '#334155'), // green if new
+              'target-arrow-color': (ele: any) => (ele.data('isNew') ? '#22c55e' : '#334155'),
               'target-arrow-shape': 'triangle',
               'curve-style': 'bezier',
               'transition-property': 'line-color, width',

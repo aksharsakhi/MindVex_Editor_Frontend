@@ -51,7 +51,7 @@ export interface ReferenceResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function authHeaders(): HeadersInit {
+function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('auth_token');
   if (token) {
     return { Authorization: `Bearer ${token}` };
@@ -60,7 +60,7 @@ function authHeaders(): HeadersInit {
 }
 
 async function request<T>(path: string, method = 'GET', body?: any): Promise<T> {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     ...authHeaders(),
   };
 

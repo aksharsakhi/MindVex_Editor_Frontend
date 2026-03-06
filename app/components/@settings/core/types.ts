@@ -11,7 +11,9 @@ export type TabType =
   | 'data'
   | 'cloud-providers'
   | 'local-providers'
-  | 'event-logs';
+  | 'event-logs'
+  | 'appearance'
+  | 'shortcuts';
 
 export type WindowType = 'user' | 'developer';
 
@@ -69,6 +71,8 @@ export const TAB_LABELS: Record<TabType, string> = {
   'cloud-providers': 'Cloud Providers',
   'local-providers': 'Local Providers',
   'event-logs': 'Event Logs',
+  appearance: 'Appearance',
+  shortcuts: 'Keyboard Shortcuts',
 };
 
 export const categoryLabels: Record<SettingCategory, string> = {
