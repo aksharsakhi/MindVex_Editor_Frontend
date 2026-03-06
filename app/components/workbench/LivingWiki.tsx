@@ -632,36 +632,82 @@ function SnapshotDashboard({ content }: { content: string }) {
     console.error('[SnapshotDashboard] Failed to parse snapshot JSON:', e);
     data = {};
   }
+
+  // Handle different snapshot formats
+  const projectStats = data.project_stats || data;
+  const moduleCounts = data.module_counts || {};
+  const healthTier = data.health_tier || data.health || 'Unknown';
+
+  // Calculate total modules
+  const totalModules = Object.keys(moduleCounts).length > 0
+    ? Object.values(moduleCounts).reduce((sum: number, count: any) => sum + (parseInt(count) || 0), 0)
+    : Array.isArray(data?.modules)
+      ? data.modules.length
+      : '--';
+
   const stats = [
     {
       label: 'Total Files',
-      val: data?.totalFiles || '--',
+      val: projectStats?.files || data?.totalFiles || '--',
       icon: <FileText className="h-4 w-4" />,
       color: 'text-blue-400',
     },
     {
-      label: 'Modules',
-      val: Array.isArray(data?.modules) ? data.modules.length : '--',
-      icon: <Package className="h-4 w-4" />,
+      label: 'Lines of Code',
+      val: projectStats?.lines_of_code ? projectStats.lines_of_code.toLocaleString() : '--',
+      icon: <Code2 className="h-4 w-4" />,
+      color: 'text-cyan-400',
+    },
+    {
+      label: 'Dependencies',
+      val: projectStats?.dependencies || data?.dependencyCount || '--',
+      icon: <GitBranch className="h-4 w-4" />,
       color: 'text-emerald-400',
     },
     {
-      label: 'Coverage',
-      val: `${((data?.coverage || 0) * 100).toFixed(0)}%`,
+      label: 'Health Tier',
+      val: healthTier.charAt(0).toUpperCase() + healthTier.slice(1),
       icon: <Activity className="h-4 w-4" />,
-      color: 'text-purple-400',
+      color:
+        healthTier === 'green'
+          ? 'text-emerald-400'
+          : healthTier === 'yellow'
+            ? 'text-yellow-400'
+            : healthTier === 'red'
+              ? 'text-red-400'
+              : 'text-gray-400',
     },
-    { label: 'Health', val: data?.health || 'Unknown', icon: <HeartPulse className="h-4 w-4" />, color: 'text-red-400' },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      {stats.map((s, i) => (
-        <div key={i} className="p-4 rounded-xl bg-[#111] border border-white/5 flex flex-col items-center text-center">
-          <div className={`${s.color} opacity-80 mb-2`}>{s.icon}</div>
-          <span className="text-[10px] uppercase text-gray-600 font-bold mb-1 tracking-widest">{s.label}</span>
-          <span className="text-lg font-bold text-white tracking-tighter">{s.val}</span>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats.map((s, i) => (
+          <div key={i} className="p-4 rounded-xl bg-[#111] border border-white/5 flex flex-col items-center text-center">
+            <div className={`${s.color} opacity-80 mb-2`}>{s.icon}</div>
+            <span className="text-[10px] uppercase text-gray-600 font-bold mb-1 tracking-widest">{s.label}</span>
+            <span className="text-lg font-bold text-white tracking-tighter">{s.val}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Module Breakdown */}
+      {Object.keys(moduleCounts).length > 0 && (
+        <div className="p-4 rounded-xl bg-[#111] border border-white/5">
+          <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <Package className="h-4 w-4 text-emerald-400" />
+            Module Breakdown
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {Object.entries(moduleCounts).map(([module, count]: [string, any]) => (
+              <div key={module} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
+                <span className="text-xs text-gray-400">{module}</span>
+                <span className="text-xs font-bold text-emerald-400">{count} files</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -675,9 +721,50 @@ function TreeVisualizer({ content }: { content: string }) {
   let data: TreeNode | null = null;
 
   try {
-    data = JSON.parse(content);
+    const raw = JSON.parse(content);
+
+    // Try to detect format and convert if needed
+    if (raw.name && (raw.children || raw.type)) {
+      // Already in correct format
+      data = raw;
+    } else if (typeof raw === 'object' && !Array.isArray(raw)) {
+      // Flat format like { "src": { "interfaces": {...} } }
+      // Convert to tree format
+      data = convertFlatToTree(raw);
+    }
   } catch (e) {
     console.error('[TreeVisualizer] Failed to parse tree.json:', e);
+  }
+
+  // Convert flat object structure to tree with name and children
+  function convertFlatToTree(obj: any, name: string = 'root'): TreeNode {
+    if (typeof obj !== 'object' || obj === null) {
+      return { name, type: 'file' };
+    }
+
+    const keys = Object.keys(obj);
+    if (keys.length === 0) {
+      // Empty object means it's a file
+      return { name, type: 'file' };
+    }
+
+    // If all values are empty objects, they're files
+    const allEmpty = keys.every((k) => Object.keys(obj[k]).length === 0);
+    if (allEmpty) {
+      // This is a directory with files
+      return {
+        name,
+        type: 'directory',
+        children: keys.map((k) => ({ name: k, type: 'file' })),
+      };
+    }
+
+    // Otherwise, process recursively
+    return {
+      name,
+      type: 'directory',
+      children: keys.map((k) => convertFlatToTree(obj[k], k)),
+    };
   }
 
   const toggle = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -732,6 +819,10 @@ function TreeVisualizer({ content }: { content: string }) {
 
   return (
     <div className="p-4 rounded-2xl bg-[#0a0a0a] border border-white/5 overflow-auto max-h-[600px]">
+      <Item node={data} depth={0} path="" />
+    </div>
+  );
+}
       <Item node={data} depth={0} path="" />
     </div>
   );
@@ -925,8 +1016,18 @@ function ArchitectureVisualizer({ content }: { content: string }) {
     } else if (raw.nodes) {
       // Format: { nodes: [], edges/links: [] }
       data.nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
+      // Convert edges to links (ForceGraph2D expects 'links' but backend may send 'edges')
       data.links = Array.isArray(raw.links) ? raw.links : Array.isArray(raw.edges) ? raw.edges : [];
     }
+
+    // Log parsed data for debugging
+    console.log('[ArchitectureVisualizer] Parsed data:', {
+      isLayered,
+      nodeCount: data.nodes.length,
+      linkCount: data.links.length,
+      nodes: data.nodes.slice(0, 3),
+      links: data.links.slice(0, 3),
+    });
   } catch (e) {
     console.error('[ArchitectureVisualizer] Failed to parse JSON:', e);
   }
@@ -940,34 +1041,84 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
   // Otherwise render force graph
   return (
-    <div className="h-[500px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
+    <div className="h-[600px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
         <h3 className="text-xs font-bold text-white flex items-center gap-2">
           <Share2 className="h-3 w-3 text-emerald-400" />
-          Interactive System Graph
+          Architecture Dependency Graph
         </h3>
-        <p className="text-[10px] text-gray-500">Drag to pan • Scroll to zoom</p>
+        <p className="text-[10px] text-gray-500">Drag nodes • Scroll to zoom • Click to focus</p>
+        {data.nodes.length > 0 && (
+          <div className="text-[9px] text-gray-600 mt-1">
+            {data.nodes.length} modules • {data.links.length} dependencies
+          </div>
+        )}
       </div>
       {data.nodes.length > 0 ? (
         <ForceGraph2D
           ref={fgRef}
           graphData={data}
-          nodeLabel="label"
-          nodeColor={(n) =>
-            (n as any).type === 'module' ? '#10b981' : (n as any).type === 'component' ? '#3b82f6' : '#6b7280'
-          }
-          linkColor={() => 'rgba(255, 255, 255, 0.08)'}
-          linkDirectionalArrowLength={3.5}
-          linkDirectionalArrowRelPos={1}
-          nodeRelSize={6}
+          nodeLabel={(node: any) => `${node.label || node.id}${node.type ? ` (${node.type})` : ''}`}
+          nodeCanvasObject={(node: any, ctx, globalScale) => {
+            const label = node.label || node.id;
+            const fontSize = 12 / globalScale;
+            ctx.font = `${fontSize}px Sans-Serif`;
+
+            // Determine node color based on type
+            let nodeColor = '#6b7280'; // default gray
+            if (node.type === 'module') nodeColor = '#10b981'; // green
+            else if (node.type === 'component') nodeColor = '#3b82f6'; // blue
+            else if (node.type === 'service') nodeColor = '#8b5cf6'; // purple
+            else if (node.type === 'controller') nodeColor = '#f59e0b'; // amber
+
+            // Draw node circle
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI, false);
+            ctx.fillStyle = nodeColor;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // Draw label
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(label, node.x, node.y + 10);
+          }}
+          linkLabel={(link: any) => link.label || ''}
+          linkColor={(link: any) => {
+            // Color code based on relationship type
+            if (link.label === 'contains') return 'rgba(16, 185, 129, 0.3)'; // green
+            if (link.label === 'uses') return 'rgba(59, 130, 246, 0.3)'; // blue
+            if (link.label === 'depends') return 'rgba(245, 158, 11, 0.3)'; // amber
+            return 'rgba(255, 255, 255, 0.15)';
+          }}
+          linkWidth={1.5}
+          linkDirectionalArrowLength={4}
+          linkDirectionalArrowRelPos={0.8}
+          linkDirectionalParticles={2}
+          linkDirectionalParticleSpeed={0.005}
+          d3AlphaDecay={0.02}
+          d3VelocityDecay={0.3}
+          nodeRelSize={8}
           backgroundColor="#080808"
-          width={800}
-          height={500}
+          width={1000}
+          height={600}
+          cooldownTicks={100}
+          onNodeClick={(node: any) => {
+            console.log('[Graph] Node clicked:', node);
+            if (fgRef.current) {
+              fgRef.current.centerAt(node.x, node.y, 1000);
+              fgRef.current.zoom(2, 1000);
+            }
+          }}
         />
       ) : (
         <div className="h-full w-full flex flex-col items-center justify-center text-gray-700 gap-4">
           <Activity className="h-8 w-8 opacity-20" />
           <p className="text-xs">No graph data found in file.</p>
+          <p className="text-[10px] text-gray-600">Expected format: {`{ "nodes": [...], "edges": [...] }`}</p>
         </div>
       )}
     </div>
