@@ -100,11 +100,7 @@ export async function getAiChurnSummary(
 /**
  * Fetch weekly churn trend for a specific file.
  */
-export async function getFileTrend(
-  repoUrl: string,
-  filePath: string,
-  weeks: number = 12,
-): Promise<WeeklyChurn[]> {
+export async function getFileTrend(repoUrl: string, filePath: string, weeks: number = 12): Promise<WeeklyChurn[]> {
   const params = new URLSearchParams({ repoUrl, filePath, weeks: weeks.toString() });
   const res = await fetch(`${BASE_URL}/api/analytics/file-trend?${params}`, {
     headers: authHeaders(),

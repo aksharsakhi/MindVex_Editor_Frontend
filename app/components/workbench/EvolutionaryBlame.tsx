@@ -237,7 +237,9 @@ export function EvolutionaryBlame({ filePath }: Props) {
       return null;
     }
 
-    const labels = churnTrend.map((w) => new Date(w.weekStart).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+    const labels = churnTrend.map((w) =>
+      new Date(w.weekStart).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+    );
 
     return {
       labels,
@@ -450,7 +452,9 @@ export function EvolutionaryBlame({ filePath }: Props) {
                 <div className="mt-2 pt-2 border-t border-white/5 text-[10px] text-gray-500 flex items-center justify-between">
                   <span>Avg Churn: {hotspotData.avgChurnRate.toFixed(1)}%</span>
                   <span>Total Commits: {hotspotData.totalCommits}</span>
-                  <span className="text-red-400">+{hotspotData.totalLinesAdded} / -{hotspotData.totalLinesDeleted}</span>
+                  <span className="text-red-400">
+                    +{hotspotData.totalLinesAdded} / -{hotspotData.totalLinesDeleted}
+                  </span>
                 </div>
               )}
             </div>
@@ -472,10 +476,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
                       <span className="text-gray-600 font-mono ml-2">{stat.percentage}%</span>
                     </div>
                     <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500"
-                        style={{ width: `${stat.percentage}%` }}
-                      />
+                      <div className="h-full bg-blue-500" style={{ width: `${stat.percentage}%` }} />
                     </div>
                   </div>
                   <span className="text-gray-600 font-mono w-10 text-right">{stat.lines}L</span>
@@ -513,9 +514,7 @@ export function EvolutionaryBlame({ filePath }: Props) {
             <tbody>
               {blameData.map((line, i) => {
                 const color = getAgeColor(line.committedAt);
-                const showMeta = clusterByCommit
-                  ? i === 0 || blameData[i - 1].commitHash !== line.commitHash
-                  : true;
+                const showMeta = clusterByCommit ? i === 0 || blameData[i - 1].commitHash !== line.commitHash : true;
 
                 return (
                   <tr key={i} className="hover:bg-white/5 group">

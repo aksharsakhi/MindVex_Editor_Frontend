@@ -32,14 +32,6 @@ import {
   X,
   Info,
   LayoutDashboard,
-  Users,
-  Monitor,
-  Smartphone,
-  Database,
-  Server,
-  Cloud,
-  Mail,
-  Bell,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ForceGraph2D from 'react-force-graph-2d';
@@ -58,30 +50,6 @@ interface TreeNode {
   name: string;
   type?: string;
   children?: TreeNode[];
-}
-
-// Layered Architecture Types
-interface ArchComponent {
-  id: string;
-  label: string;
-  type: 'users' | 'device' | 'service' | 'database' | 'resource' | 'middleware';
-  sublabel?: string;
-  icon?: string;
-}
-interface ArchLayer {
-  id: string;
-  title: string;
-  components: ArchComponent[];
-  color?: string;
-}
-interface ArchConnection {
-  from: string;
-  to: string;
-  style?: 'solid' | 'dashed';
-}
-interface LayeredArchData {
-  layers: ArchLayer[];
-  connections: ArchConnection[];
 }
 
 // ─── Tab Registry ─────────────────────────────────────────────────────────────
@@ -632,82 +600,36 @@ function SnapshotDashboard({ content }: { content: string }) {
     console.error('[SnapshotDashboard] Failed to parse snapshot JSON:', e);
     data = {};
   }
-
-  // Handle different snapshot formats
-  const projectStats = data.project_stats || data;
-  const moduleCounts = data.module_counts || {};
-  const healthTier = data.health_tier || data.health || 'Unknown';
-
-  // Calculate total modules
-  const totalModules = Object.keys(moduleCounts).length > 0
-    ? Object.values(moduleCounts).reduce((sum: number, count: any) => sum + (parseInt(count) || 0), 0)
-    : Array.isArray(data?.modules)
-      ? data.modules.length
-      : '--';
-
   const stats = [
     {
       label: 'Total Files',
-      val: projectStats?.files || data?.totalFiles || '--',
+      val: data?.totalFiles || '--',
       icon: <FileText className="h-4 w-4" />,
       color: 'text-blue-400',
     },
     {
-      label: 'Lines of Code',
-      val: projectStats?.lines_of_code ? projectStats.lines_of_code.toLocaleString() : '--',
-      icon: <Code2 className="h-4 w-4" />,
-      color: 'text-cyan-400',
-    },
-    {
-      label: 'Dependencies',
-      val: projectStats?.dependencies || data?.dependencyCount || '--',
-      icon: <GitBranch className="h-4 w-4" />,
+      label: 'Modules',
+      val: Array.isArray(data?.modules) ? data.modules.length : '--',
+      icon: <Package className="h-4 w-4" />,
       color: 'text-emerald-400',
     },
     {
-      label: 'Health Tier',
-      val: healthTier.charAt(0).toUpperCase() + healthTier.slice(1),
+      label: 'Coverage',
+      val: `${((data?.coverage || 0) * 100).toFixed(0)}%`,
       icon: <Activity className="h-4 w-4" />,
-      color:
-        healthTier === 'green'
-          ? 'text-emerald-400'
-          : healthTier === 'yellow'
-            ? 'text-yellow-400'
-            : healthTier === 'red'
-              ? 'text-red-400'
-              : 'text-gray-400',
+      color: 'text-purple-400',
     },
+    { label: 'Health', val: data?.health || 'Unknown', icon: <HeartPulse className="h-4 w-4" />, color: 'text-red-400' },
   ];
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
-          <div key={i} className="p-4 rounded-xl bg-[#111] border border-white/5 flex flex-col items-center text-center">
-            <div className={`${s.color} opacity-80 mb-2`}>{s.icon}</div>
-            <span className="text-[10px] uppercase text-gray-600 font-bold mb-1 tracking-widest">{s.label}</span>
-            <span className="text-lg font-bold text-white tracking-tighter">{s.val}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Module Breakdown */}
-      {Object.keys(moduleCounts).length > 0 && (
-        <div className="p-4 rounded-xl bg-[#111] border border-white/5">
-          <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-            <Package className="h-4 w-4 text-emerald-400" />
-            Module Breakdown
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {Object.entries(moduleCounts).map(([module, count]: [string, any]) => (
-              <div key={module} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                <span className="text-xs text-gray-400">{module}</span>
-                <span className="text-xs font-bold text-emerald-400">{count} files</span>
-              </div>
-            ))}
-          </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {stats.map((s, i) => (
+        <div key={i} className="p-4 rounded-xl bg-[#111] border border-white/5 flex flex-col items-center text-center">
+          <div className={`${s.color} opacity-80 mb-2`}>{s.icon}</div>
+          <span className="text-[10px] uppercase text-gray-600 font-bold mb-1 tracking-widest">{s.label}</span>
+          <span className="text-lg font-bold text-white tracking-tighter">{s.val}</span>
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -721,50 +643,9 @@ function TreeVisualizer({ content }: { content: string }) {
   let data: TreeNode | null = null;
 
   try {
-    const raw = JSON.parse(content);
-
-    // Try to detect format and convert if needed
-    if (raw.name && (raw.children || raw.type)) {
-      // Already in correct format
-      data = raw;
-    } else if (typeof raw === 'object' && !Array.isArray(raw)) {
-      // Flat format like { "src": { "interfaces": {...} } }
-      // Convert to tree format
-      data = convertFlatToTree(raw);
-    }
+    data = JSON.parse(content);
   } catch (e) {
     console.error('[TreeVisualizer] Failed to parse tree.json:', e);
-  }
-
-  // Convert flat object structure to tree with name and children
-  function convertFlatToTree(obj: any, name: string = 'root'): TreeNode {
-    if (typeof obj !== 'object' || obj === null) {
-      return { name, type: 'file' };
-    }
-
-    const keys = Object.keys(obj);
-    if (keys.length === 0) {
-      // Empty object means it's a file
-      return { name, type: 'file' };
-    }
-
-    // If all values are empty objects, they're files
-    const allEmpty = keys.every((k) => Object.keys(obj[k]).length === 0);
-    if (allEmpty) {
-      // This is a directory with files
-      return {
-        name,
-        type: 'directory',
-        children: keys.map((k) => ({ name: k, type: 'file' })),
-      };
-    }
-
-    // Otherwise, process recursively
-    return {
-      name,
-      type: 'directory',
-      children: keys.map((k) => convertFlatToTree(obj[k], k)),
-    };
   }
 
   const toggle = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -823,189 +704,13 @@ function TreeVisualizer({ content }: { content: string }) {
     </div>
   );
 }
-      <Item node={data} depth={0} path="" />
-    </div>
-  );
-}
-
-// ─── Layered Architecture Diagram ─────────────────────────────────────────────
-
-function LayeredArchitectureDiagram({ data }: { data: LayeredArchData }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [componentPositions, setComponentPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
-
-  // Component icon mapper
-  const getComponentIcon = (type: string) => {
-    switch (type) {
-      case 'users':
-        return <Users className="h-6 w-6" />;
-      case 'device':
-        return <Monitor className="h-6 w-6" />;
-      case 'service':
-        return <Server className="h-6 w-6" />;
-      case 'database':
-        return <Database className="h-6 w-6" />;
-      case 'resource':
-        return <Cloud className="h-6 w-6" />;
-      case 'middleware':
-        return <Mail className="h-6 w-6" />;
-      default:
-        return <Package className="h-6 w-6" />;
-    }
-  };
-
-  // Layer color mapper
-  const getLayerColor = (layerId: string, customColor?: string) => {
-    if (customColor) return customColor;
-    const colors: Record<string, string> = {
-      channels: 'bg-gray-100',
-      'user-experience': 'bg-cyan-50',
-      middleware: 'bg-amber-50',
-      backend: 'bg-purple-50',
-    };
-    return colors[layerId] || 'bg-gray-50';
-  };
-
-  const getLayerBorder = (layerId: string) => {
-    const borders: Record<string, string> = {
-      channels: 'border-gray-200',
-      'user-experience': 'border-cyan-200',
-      middleware: 'border-amber-200',
-      backend: 'border-purple-200',
-    };
-    return borders[layerId] || 'border-gray-200';
-  };
-
-  // Calculate positions
-  useEffect(() => {
-    const positions = new Map<string, { x: number; y: number }>();
-    const containerWidth = 1000;
-    const layerWidth = containerWidth / data.layers.length;
-
-    data.layers.forEach((layer, layerIdx) => {
-      const layerX = layerIdx * layerWidth + layerWidth / 2;
-      const componentHeight = 120;
-      const totalHeight = layer.components.length * componentHeight;
-      const startY = 100;
-
-      layer.components.forEach((comp, compIdx) => {
-        const y = startY + compIdx * componentHeight + 50;
-        positions.set(comp.id, { x: layerX, y });
-      });
-    });
-
-    setComponentPositions(positions);
-  }, [data]);
-
-  return (
-    <div className="relative w-full bg-white rounded-2xl border border-gray-200 overflow-hidden">
-      {/* SVG for connections */}
-      <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-        <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="10"
-            markerHeight="10"
-            refX="9"
-            refY="3"
-            orient="auto"
-            markerUnits="strokeWidth"
-          >
-            <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
-          </marker>
-        </defs>
-        {data.connections.map((conn, idx) => {
-          const from = componentPositions.get(conn.from);
-          const to = componentPositions.get(conn.to);
-          if (!from || !to) return null;
-
-          return (
-            <line
-              key={idx}
-              x1={from.x + 100}
-              y1={from.y}
-              x2={to.x - 100}
-              y2={to.y}
-              stroke="#94a3b8"
-              strokeWidth="2"
-              strokeDasharray={conn.style === 'dashed' ? '5,5' : '0'}
-              markerEnd="url(#arrowhead)"
-            />
-          );
-        })}
-      </svg>
-
-      {/* Layers */}
-      <div className="relative flex min-h-[600px]" style={{ zIndex: 1 }}>
-        {data.layers.map((layer, layerIdx) => (
-          <div
-            key={layer.id}
-            className={`flex-1 ${getLayerColor(layer.id, layer.color)} ${getLayerBorder(layer.id)} border-r last:border-r-0 p-6 flex flex-col`}
-          >
-            {/* Layer Title */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold text-gray-800 text-center">{layer.title}</h3>
-            </div>
-
-            {/* Components */}
-            <div className="flex-1 flex flex-col justify-start items-center gap-6">
-              {layer.components.map((comp) => (
-                <div
-                  key={comp.id}
-                  className="bg-white border-2 border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow px-4 py-3 min-w-[140px] max-w-[180px] w-full"
-                  style={{ position: 'relative', zIndex: 2 }}
-                >
-                  <div className="flex flex-col items-center text-center gap-2">
-                    {/* Icon */}
-                    <div
-                      className={`${
-                        comp.type === 'users'
-                          ? 'text-gray-700'
-                          : comp.type === 'service'
-                            ? 'text-teal-600'
-                            : comp.type === 'middleware'
-                              ? 'text-orange-600'
-                              : comp.type === 'resource'
-                                ? 'text-purple-600'
-                                : 'text-blue-600'
-                      }`}
-                    >
-                      {getComponentIcon(comp.type)}
-                    </div>
-                    {/* Label */}
-                    <div>
-                      <div className="text-xs font-semibold text-gray-800 leading-tight">{comp.label}</div>
-                      {comp.sublabel && <div className="text-[10px] text-gray-500 mt-1">{comp.sublabel}</div>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function ArchitectureVisualizer({ content }: { content: string }) {
   let data: { nodes: any[]; links: any[] } = { nodes: [], links: [] };
-  let layeredData: LayeredArchData | null = null;
-  let isLayered = false;
-
   try {
     const raw = JSON.parse(content);
-
-    // Check if it's layered architecture format
-    if (raw.layers && Array.isArray(raw.layers)) {
-      layeredData = {
-        layers: raw.layers,
-        connections: Array.isArray(raw.connections) ? raw.connections : [],
-      };
-      isLayered = true;
-    }
-    // Handle different possible formats for force graph
-    else if (raw.graph) {
+    // Handle different possible formats
+    if (raw.graph) {
       // Format: { graph: { nodes: [], edges/links: [] } }
       data.nodes = Array.isArray(raw.graph.nodes) ? raw.graph.nodes : [];
       data.links = Array.isArray(raw.graph.links)
@@ -1016,109 +721,43 @@ function ArchitectureVisualizer({ content }: { content: string }) {
     } else if (raw.nodes) {
       // Format: { nodes: [], edges/links: [] }
       data.nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
-      // Convert edges to links (ForceGraph2D expects 'links' but backend may send 'edges')
       data.links = Array.isArray(raw.links) ? raw.links : Array.isArray(raw.edges) ? raw.edges : [];
     }
-
-    // Log parsed data for debugging
-    console.log('[ArchitectureVisualizer] Parsed data:', {
-      isLayered,
-      nodeCount: data.nodes.length,
-      linkCount: data.links.length,
-      nodes: data.nodes.slice(0, 3),
-      links: data.links.slice(0, 3),
-    });
   } catch (e) {
     console.error('[ArchitectureVisualizer] Failed to parse JSON:', e);
   }
 
   const fgRef = useRef<any>();
 
-  // Render layered diagram if format matches
-  if (isLayered && layeredData) {
-    return <LayeredArchitectureDiagram data={layeredData} />;
-  }
-
-  // Otherwise render force graph
   return (
-    <div className="h-[600px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
+    <div className="h-[500px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
         <h3 className="text-xs font-bold text-white flex items-center gap-2">
           <Share2 className="h-3 w-3 text-emerald-400" />
-          Architecture Dependency Graph
+          Interactive System Graph
         </h3>
-        <p className="text-[10px] text-gray-500">Drag nodes • Scroll to zoom • Click to focus</p>
-        {data.nodes.length > 0 && (
-          <div className="text-[9px] text-gray-600 mt-1">
-            {data.nodes.length} modules • {data.links.length} dependencies
-          </div>
-        )}
+        <p className="text-[10px] text-gray-500">Drag to pan • Scroll to zoom</p>
       </div>
       {data.nodes.length > 0 ? (
         <ForceGraph2D
           ref={fgRef}
           graphData={data}
-          nodeLabel={(node: any) => `${node.label || node.id}${node.type ? ` (${node.type})` : ''}`}
-          nodeCanvasObject={(node: any, ctx, globalScale) => {
-            const label = node.label || node.id;
-            const fontSize = 12 / globalScale;
-            ctx.font = `${fontSize}px Sans-Serif`;
-
-            // Determine node color based on type
-            let nodeColor = '#6b7280'; // default gray
-            if (node.type === 'module') nodeColor = '#10b981'; // green
-            else if (node.type === 'component') nodeColor = '#3b82f6'; // blue
-            else if (node.type === 'service') nodeColor = '#8b5cf6'; // purple
-            else if (node.type === 'controller') nodeColor = '#f59e0b'; // amber
-
-            // Draw node circle
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI, false);
-            ctx.fillStyle = nodeColor;
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-
-            // Draw label
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(label, node.x, node.y + 10);
-          }}
-          linkLabel={(link: any) => link.label || ''}
-          linkColor={(link: any) => {
-            // Color code based on relationship type
-            if (link.label === 'contains') return 'rgba(16, 185, 129, 0.3)'; // green
-            if (link.label === 'uses') return 'rgba(59, 130, 246, 0.3)'; // blue
-            if (link.label === 'depends') return 'rgba(245, 158, 11, 0.3)'; // amber
-            return 'rgba(255, 255, 255, 0.15)';
-          }}
-          linkWidth={1.5}
-          linkDirectionalArrowLength={4}
-          linkDirectionalArrowRelPos={0.8}
-          linkDirectionalParticles={2}
-          linkDirectionalParticleSpeed={0.005}
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
-          nodeRelSize={8}
+          nodeLabel="label"
+          nodeColor={(n) =>
+            (n as any).type === 'module' ? '#10b981' : (n as any).type === 'component' ? '#3b82f6' : '#6b7280'
+          }
+          linkColor={() => 'rgba(255, 255, 255, 0.08)'}
+          linkDirectionalArrowLength={3.5}
+          linkDirectionalArrowRelPos={1}
+          nodeRelSize={6}
           backgroundColor="#080808"
-          width={1000}
-          height={600}
-          cooldownTicks={100}
-          onNodeClick={(node: any) => {
-            console.log('[Graph] Node clicked:', node);
-            if (fgRef.current) {
-              fgRef.current.centerAt(node.x, node.y, 1000);
-              fgRef.current.zoom(2, 1000);
-            }
-          }}
+          width={800}
+          height={500}
         />
       ) : (
         <div className="h-full w-full flex flex-col items-center justify-center text-gray-700 gap-4">
           <Activity className="h-8 w-8 opacity-20" />
           <p className="text-xs">No graph data found in file.</p>
-          <p className="text-[10px] text-gray-600">Expected format: {`{ "nodes": [...], "edges": [...] }`}</p>
         </div>
       )}
     </div>
