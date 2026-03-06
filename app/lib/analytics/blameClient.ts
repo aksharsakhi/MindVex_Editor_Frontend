@@ -16,6 +16,23 @@ export interface BlameLine {
   content: string;
 }
 
+export interface WeeklyChurn {
+  weekStart: string; // LocalDate ISO format
+  linesAdded: number;
+  linesDeleted: number;
+  commitCount: number;
+  churnRate: number;
+}
+
+export interface HotspotData {
+  filePath: string;
+  avgChurnRate: number;
+  totalCommits: number;
+  totalLinesAdded: number;
+  totalLinesDeleted: number;
+  weeklyTrend: { weekStart: string; churnRate: number; commits: number }[];
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function authHeaders(): HeadersInit {
@@ -78,4 +95,48 @@ export async function getAiChurnSummary(
   const data = (await res.json()) as { response?: string; content?: string };
 
   return data.response ?? data.content ?? '(no response)';
+}
+
+/**
+ * Fetch weekly churn trend for a specific file.
+ */
+export async function getFileTrend(
+  repoUrl: string,
+  filePath: string,
+  weeks: number = 12,
+): Promise<WeeklyChurn[]> {
+  const params = new URLSearchParams({ repoUrl, filePath, weeks: weeks.toString() });
+  const res = await fetch(`${BASE_URL}/api/analytics/file-trend?${params}`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`File trend API ${res.status}`);
+  }
+
+  return res.json() as Promise<WeeklyChurn[]>;
+}
+
+/**
+ * Fetch hotspots (high churn files) for the repo.
+ */
+export async function getHotspots(
+  repoUrl: string,
+  weeks: number = 12,
+  threshold: number = 25.0,
+): Promise<HotspotData[]> {
+  const params = new URLSearchParams({
+    repoUrl,
+    weeks: weeks.toString(),
+    threshold: threshold.toString(),
+  });
+  const res = await fetch(`${BASE_URL}/api/analytics/hotspots?${params}`, {
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Hotspots API ${res.status}`);
+  }
+
+  return res.json() as Promise<HotspotData[]>;
 }

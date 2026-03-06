@@ -12,7 +12,6 @@ import {
 
 // Tool Pages
 import { KnowledgeGraphPage } from './tools/KnowledgeGraphPage';
-import { ASTParsingPage } from './tools/ASTParsingPage';
 import { ArchitecturePage } from './tools/ArchitecturePage';
 import { RealTimeGraphPage } from './tools/RealTimeGraphPage';
 import { ImpactAnalysisPage } from './tools/ImpactAnalysisPage';
@@ -37,13 +36,6 @@ const quickActions: QuickActionItem[] = [
     description: 'Build knowledge graphs from your codebase using AST parsing',
     icon: '🧠',
     color: 'yellow',
-  },
-  {
-    id: 'ast-parsing',
-    title: 'Multi-Language AST Parsing',
-    description: 'Parse multiple programming languages using Abstract Syntax Trees',
-    icon: '🔍',
-    color: 'indigo',
   },
   {
     id: 'architecture-graph',
@@ -157,8 +149,6 @@ export function QuickActions() {
     switch (activeToolId) {
       case 'kg-construction':
         return <KnowledgeGraphPage onBack={handleBackToMenu} />;
-      case 'ast-parsing':
-        return <ASTParsingPage onBack={handleBackToMenu} />;
       case 'architecture-graph':
         return <ArchitecturePage onBack={handleBackToMenu} />;
       case 'realtime-graph':

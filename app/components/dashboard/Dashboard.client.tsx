@@ -389,12 +389,6 @@ export function Dashboard() {
           toolId="kg-construction"
         />
         <ToolCard
-          icon={<Code className="w-6 h-6 text-green-400" />}
-          title="Multi-Language AST Parsing"
-          desc="Parse code into Abstract Syntax Trees"
-          toolId="ast-parsing"
-        />
-        <ToolCard
           icon={<Layers className="w-6 h-6 text-purple-400" />}
           title="Architecture / Dependency Graph"
           desc="Visualize your code architecture"

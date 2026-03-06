@@ -7,7 +7,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
-import { getBlame, type BlameLine, getAiChurnSummary } from '~/lib/analytics/blameClient';
+import {
+  getBlame,
+  type BlameLine,
+  getAiChurnSummary,
+  getFileTrend,
+  type WeeklyChurn,
+  getHotspots,
+  type HotspotData,
+} from '~/lib/analytics/blameClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import {
   getUnifiedParser,
@@ -19,8 +27,36 @@ import {
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Search, History, Clock, User } from 'lucide-react';
+import {
+  Brain,
+  Zap,
+  Info,
+  RefreshCw,
+  Download,
+  Search,
+  History,
+  Clock,
+  User,
+  TrendingUp,
+  AlertTriangle,
+  Users,
+  GitCommit,
+} from 'lucide-react';
 import { toast } from 'react-toastify';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface Props {
   filePath?: string;
@@ -37,6 +73,12 @@ export function EvolutionaryBlame({ filePath }: Props) {
 
   const parseMode = useStore(parseModeStore);
   const [llmAnalysis, setLlmAnalysis] = useState<LLMAnalysis | null>(null);
+
+  // New state for enhancements
+  const [churnTrend, setChurnTrend] = useState<WeeklyChurn[]>([]);
+  const [isHotspot, setIsHotspot] = useState(false);
+  const [hotspotData, setHotspotData] = useState<HotspotData | null>(null);
+  const [clusterByCommit, setClusterByCommit] = useState(true); // Commit clustering toggle
 
   useEffect(() => {
     const recent = repositoryHistoryStore.getRecentRepositories(1);
@@ -55,10 +97,28 @@ export function EvolutionaryBlame({ filePath }: Props) {
     setError(null);
     setAiSummary(null);
     setLlmAnalysis(null);
+    setChurnTrend([]);
+    setIsHotspot(false);
+    setHotspotData(null);
 
     try {
-      const data = await getBlame(repoUrl, path);
+      // Parallel fetch: blame data + churn trend + hotspots
+      const [data, trend, hotspots] = await Promise.all([
+        getBlame(repoUrl, path),
+        getFileTrend(repoUrl, path, 12).catch(() => []),
+        getHotspots(repoUrl, 12, 25.0).catch(() => []),
+      ]);
+
       setBlameData(data);
+      setChurnTrend(trend);
+
+      // Check if current file is a hotspot
+      const currentHotspot = hotspots.find((h) => h.filePath === path);
+
+      if (currentHotspot) {
+        setIsHotspot(true);
+        setHotspotData(currentHotspot);
+      }
 
       // If in LLM mode, automatically trigger AI analysis
       if (parseMode.type === 'llm-enhanced' && data.length > 0) {
@@ -152,7 +212,96 @@ export function EvolutionaryBlame({ filePath }: Props) {
     return '#6B7280'; // gray
   };
 
+  // Calculate author statistics
+  const getAuthorStats = () => {
+    const authorContributions = new Map<string, number>();
+    blameData.forEach((line) => {
+      const author = line.authorEmail || 'Unknown';
+      authorContributions.set(author, (authorContributions.get(author) || 0) + 1);
+    });
+
+    const sorted = Array.from(authorContributions.entries())
+      .sort(([, a], [, b]) => b - a)
+      .map(([author, lines]) => ({
+        author,
+        lines,
+        percentage: ((lines / blameData.length) * 100).toFixed(1),
+      }));
+
+    return sorted;
+  };
+
+  // Prepare chart data for churn trend
+  const getChartData = () => {
+    if (churnTrend.length === 0) {
+      return null;
+    }
+
+    const labels = churnTrend.map((w) => new Date(w.weekStart).toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Churn Rate (%)',
+          data: churnTrend.map((w) => w.churnRate),
+          borderColor: '#F97316',
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          tension: 0.3,
+        },
+        {
+          label: 'Commits',
+          data: churnTrend.map((w) => w.commitCount),
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.3,
+          yAxisID: 'y1',
+        },
+      ],
+    };
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top' as const,
+        labels: { color: '#9CA3AF', font: { size: 10 } },
+      },
+      title: {
+        display: true,
+        text: '12-Week Churn Trend',
+        color: '#F97316',
+        font: { size: 12, weight: 'bold' as const },
+      },
+    },
+    scales: {
+      x: {
+        ticks: { color: '#6B7280', font: { size: 9 } },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+      },
+      y: {
+        type: 'linear' as const,
+        position: 'left' as const,
+        ticks: { color: '#F97316', font: { size: 9 } },
+        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+        title: { display: true, text: 'Churn %', color: '#F97316' },
+      },
+      y1: {
+        type: 'linear' as const,
+        position: 'right' as const,
+        ticks: { color: '#3B82F6', font: { size: 9 } },
+        grid: { display: false },
+        title: { display: true, text: 'Commits', color: '#3B82F6' },
+      },
+    },
+  };
+
   const uniqueAuthors = [...new Set(blameData.map((l) => l.authorEmail))];
+  const authorStats = blameData.length > 0 ? getAuthorStats() : [];
+  const chartData = getChartData();
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] text-white overflow-hidden">
@@ -163,6 +312,11 @@ export function EvolutionaryBlame({ filePath }: Props) {
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Search className="h-5 w-5 text-orange-400" /> Evolutionary Blame
             </h2>
+            {isHotspot && (
+              <Badge variant="outline" className="border-red-500/30 text-red-400 text-[10px] h-5 py-0">
+                <AlertTriangle className="h-2.5 w-2.5 mr-1" /> High Churn Hotspot
+              </Badge>
+            )}
             <ParseModeStatus />
           </div>
           <ParseModeSelector compact />
@@ -227,6 +381,17 @@ export function EvolutionaryBlame({ filePath }: Props) {
             <Badge variant="outline" className="text-[10px] h-5 py-0">
               <History className="h-2.5 w-2.5 mr-1" /> {blameData.length} Lines
             </Badge>
+            <button
+              onClick={() => setClusterByCommit(!clusterByCommit)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] border transition-colors ${
+                clusterByCommit
+                  ? 'bg-orange-500/10 border-orange-500/30 text-orange-400'
+                  : 'bg-white/5 border-white/10 text-gray-500'
+              }`}
+              title="Group consecutive lines by commit"
+            >
+              <GitCommit className="h-2.5 w-2.5" /> Cluster
+            </button>
           </div>
         </div>
       </div>
@@ -272,6 +437,60 @@ export function EvolutionaryBlame({ filePath }: Props) {
         </div>
       )}
 
+      {/* Churn Trend & Author Statistics */}
+      {blameData.length > 0 && (
+        <div className="mx-5 mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+          {/* Churn Trend Chart */}
+          {chartData && (
+            <div className="p-3 bg-[#151515] border border-white/10 rounded-lg">
+              <div className="h-[180px]">
+                <Line data={chartData} options={chartOptions} />
+              </div>
+              {isHotspot && hotspotData && (
+                <div className="mt-2 pt-2 border-t border-white/5 text-[10px] text-gray-500 flex items-center justify-between">
+                  <span>Avg Churn: {hotspotData.avgChurnRate.toFixed(1)}%</span>
+                  <span>Total Commits: {hotspotData.totalCommits}</span>
+                  <span className="text-red-400">+{hotspotData.totalLinesAdded} / -{hotspotData.totalLinesDeleted}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Author Statistics */}
+          <div className="p-3 bg-[#151515] border border-white/10 rounded-lg">
+            <div className="font-bold text-blue-400 mb-2 flex items-center gap-1 text-xs">
+              <Users className="h-3 w-3" /> Author Contributions
+            </div>
+            <div className="space-y-2 max-h-[180px] overflow-y-auto">
+              {authorStats.slice(0, 10).map((stat, i) => (
+                <div key={i} className="flex items-center gap-2 text-[10px]">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="truncate text-gray-400" title={stat.author}>
+                        {stat.author.split('@')[0]}
+                      </span>
+                      <span className="text-gray-600 font-mono ml-2">{stat.percentage}%</span>
+                    </div>
+                    <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500"
+                        style={{ width: `${stat.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-gray-600 font-mono w-10 text-right">{stat.lines}L</span>
+                </div>
+              ))}
+            </div>
+            {authorStats.length > 10 && (
+              <div className="mt-2 pt-2 border-t border-white/5 text-[9px] text-gray-600 text-center">
+                +{authorStats.length - 10} more authors
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mx-5 mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm flex-shrink-0">
           {error}
@@ -294,7 +513,9 @@ export function EvolutionaryBlame({ filePath }: Props) {
             <tbody>
               {blameData.map((line, i) => {
                 const color = getAgeColor(line.committedAt);
-                const showMeta = i === 0 || blameData[i - 1].commitHash !== line.commitHash;
+                const showMeta = clusterByCommit
+                  ? i === 0 || blameData[i - 1].commitHash !== line.commitHash
+                  : true;
 
                 return (
                   <tr key={i} className="hover:bg-white/5 group">

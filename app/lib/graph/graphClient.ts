@@ -53,17 +53,42 @@ export interface ReferenceResult {
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem('auth_token');
-  return { Authorization: token ? `Bearer ${token}` : '' };
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
 }
 
-async function request<T>(path: string, method = 'GET'): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, { method, headers: authHeaders() });
+async function request<T>(path: string, method = 'GET', body?: any): Promise<T> {
+  const headers: HeadersInit = {
+    ...authHeaders(),
+  };
+
+  // Always set Content-Type for POST/PUT/PATCH requests
+  if (method !== 'GET' && method !== 'DELETE') {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const config: RequestInit = {
+    method,
+    headers,
+  };
+
+  if (body) {
+    config.body = JSON.stringify(body);
+  }
+
+  console.log('[graphClient.request]', { path, method, hasBody: !!body, bodyContent: body });
+
+  const res = await fetch(`${BASE_URL}${path}`, config);
 
   if (res.status === 401) {
     throw new Error('Unauthorized: Please log in using GitHub first.');
   }
 
   if (!res.ok) {
+    const errorText = await res.text();
+    console.error('[graphClient.request] Error response:', errorText);
     throw new Error(`GraphAPI ${res.status}: ${path}`);
   }
 
@@ -253,10 +278,10 @@ export async function semanticFilter(
   totalMatches: number;
   error?: string;
 }> {
-  return request(`/api/graph/semantic-filter?repoUrl=${encodeURIComponent(repoUrl)}`, 'POST', {
-    query,
-    topK,
-  });
+  const body = { query, topK };
+  console.log('[semanticFilter] Request:', { repoUrl, body });
+
+  return request(`/api/graph/semantic-filter?repoUrl=${encodeURIComponent(repoUrl)}`, 'POST', body);
 }
 
 /**
