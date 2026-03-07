@@ -491,28 +491,28 @@ export function EvolutionaryBlame({ filePath }: Props) {
                 </button>
               </Popover.Trigger>
 
-            <Popover.Portal>
-              <Popover.Content
-                className="bg-[#151515] border border-white/10 rounded-lg p-2 shadow-lg max-h-[400px] overflow-y-auto w-[500px] z-50"
-                sideOffset={5}
-              >
-                <div className="mb-2 px-2 py-1 text-xs text-gray-500 border-b border-white/5">
-                  Select file to analyze
-                </div>
-                <div className="max-h-[350px] overflow-y-auto">
-                  {fileTree.map((node) => (
-                    <FileTreeNode
-                      key={node.path}
-                      node={node}
-                      onFileSelect={handleFileSelect}
-                      expandedFolders={expandedFolders}
-                      onToggleFolder={toggleFolder}
-                    />
-                  ))}
-                </div>
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
+              <Popover.Portal>
+                <Popover.Content
+                  className="bg-[#151515] border border-white/10 rounded-lg p-2 shadow-lg max-h-[400px] overflow-y-auto w-[500px] z-50"
+                  sideOffset={5}
+                >
+                  <div className="mb-2 px-2 py-1 text-xs text-gray-500 border-b border-white/5">
+                    Select file to analyze
+                  </div>
+                  <div className="max-h-[350px] overflow-y-auto">
+                    {fileTree.map((node) => (
+                      <FileTreeNode
+                        key={node.path}
+                        node={node}
+                        onFileSelect={handleFileSelect}
+                        expandedFolders={expandedFolders}
+                        onToggleFolder={toggleFolder}
+                      />
+                    ))}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           </div>
 
           <Button

@@ -7,6 +7,9 @@
 @use 'components/editor.scss';
 @use 'components/toast.scss';
 
+// GitHub Markdown CSS for professional markdown rendering
+@import 'github-markdown-css/github-markdown.css';
+
 html,
 body {
   height: 100%;
@@ -79,4 +82,189 @@ button {
 
   // Firefox support for inverted colors
   scrollbar-color: color-mix(in srgb, var(--mindvex-elements-textPrimary), transparent 50%) transparent;
+}
+
+// ─── Markdown Renderer Theme Overrides ───────────────────────────────────────
+
+// Override github-markdown-css to match MindVex dark/light themes
+.markdown-body {
+  // Background and text colors
+  background-color: var(--background-depth-1, #18181b) !important;
+  color: var(--text-primary, #e4e4e7) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+
+  // Headings
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--text-primary, #e4e4e7) !important;
+    border-bottom-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+  }
+
+  // Links
+  a {
+    color: var(--mindvex-accent-primary, #3b82f6) !important;
+
+    &:hover {
+      color: var(--mindvex-accent-primaryHover, #60a5fa) !important;
+    }
+  }
+
+  // Inline code
+  code {
+    background-color: var(--background-depth-3, #27272a) !important;
+    color: var(--text-primary, #e4e4e7) !important;
+    border-radius: 6px;
+    padding: 0.2em 0.4em;
+  }
+
+  // Code blocks
+  pre {
+    background-color: var(--background-depth-3, #27272a) !important;
+    border: 1px solid var(--mindvex-elements-borderColor, #3f3f46);
+    border-radius: 8px;
+
+    code {
+      background-color: transparent !important;
+      padding: 0;
+    }
+  }
+
+  // Blockquotes
+  blockquote {
+    color: var(--text-secondary, #a1a1aa) !important;
+    border-left-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+  }
+
+  // Tables
+  table {
+    border-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+
+    tr {
+      background-color: var(--background-depth-1, #18181b) !important;
+      border-top-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+
+      &:nth-child(2n) {
+        background-color: var(--background-depth-2, #1f1f23) !important;
+      }
+    }
+
+    th,
+    td {
+      border-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+      color: var(--text-primary, #e4e4e7) !important;
+    }
+
+    th {
+      background-color: var(--background-depth-2, #1f1f23) !important;
+    }
+  }
+
+  // Horizontal rules
+  hr {
+    background-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+    border: none;
+    height: 1px;
+  }
+
+  // Lists
+  ul,
+  ol {
+    color: var(--text-primary, #e4e4e7) !important;
+  }
+
+  // Images
+  img {
+    border-radius: 8px;
+    max-width: 100%;
+  }
+
+  // Task lists
+  .task-list-item {
+    list-style-type: none;
+
+    input {
+      margin-right: 0.5em;
+    }
+  }
+
+  // Keyboard tags
+  kbd {
+    background-color: var(--background-depth-3, #27272a) !important;
+    border-color: var(--mindvex-elements-borderColor, #3f3f46) !important;
+    color: var(--text-primary, #e4e4e7) !important;
+  }
+
+  // Mark/highlight
+  mark {
+    background-color: rgba(255, 215, 0, 0.3) !important;
+    color: var(--text-primary, #e4e4e7) !important;
+  }
+}
+
+// Light theme overrides
+[data-theme='light'] .markdown-body {
+  background-color: #ffffff !important;
+  color: #24292f !important;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #24292f !important;
+    border-bottom-color: #d0d7de !important;
+  }
+
+  code {
+    background-color: rgba(175, 184, 193, 0.2) !important;
+    color: #24292f !important;
+  }
+
+  pre {
+    background-color: #f6f8fa !important;
+    border-color: #d0d7de !important;
+  }
+
+  blockquote {
+    color: #656d76 !important;
+    border-left-color: #d0d7de !important;
+  }
+
+  table {
+    border-color: #d0d7de !important;
+
+    tr {
+      background-color: #ffffff !important;
+      border-top-color: #d0d7de !important;
+
+      &:nth-child(2n) {
+        background-color: #f6f8fa !important;
+      }
+    }
+
+    th,
+    td {
+      border-color: #d0d7de !important;
+      color: #24292f !important;
+    }
+
+    th {
+      background-color: #f6f8fa !important;
+    }
+  }
+
+  hr {
+    background-color: #d0d7de !important;
+  }
+
+  kbd {
+    background-color: #f6f8fa !important;
+    border-color: #d0d7de !important;
+    color: #24292f !important;
+  }
 }

@@ -428,7 +428,7 @@ export function AnalyticsDashboard() {
           <div className="text-3xl font-bold text-red-400 mb-1">{hotspots.length}</div>
           <div className="text-[10px] text-gray-500">Files requiring attention</div>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-orange-950/30 to-orange-900/10 border-orange-500/20 p-4 hover:border-orange-500/40 transition-all group">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-gray-400 flex items-center gap-1.5">
@@ -445,7 +445,7 @@ export function AnalyticsDashboard() {
           </div>
           <div className="text-[10px] text-gray-500">Average code volatility</div>
         </Card>
-        
+
         <Card className="bg-gradient-to-br from-blue-950/30 to-blue-900/10 border-blue-500/20 p-4 hover:border-blue-500/40 transition-all group">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-gray-400 flex items-center gap-1.5">
@@ -454,7 +454,9 @@ export function AnalyticsDashboard() {
             </div>
             <BarChart2 className="h-4 w-4 text-blue-400/40" />
           </div>
-          <div className="text-3xl font-bold text-blue-400 mb-1">{hotspots.reduce((s, h) => s + h.totalCommits, 0)}</div>
+          <div className="text-3xl font-bold text-blue-400 mb-1">
+            {hotspots.reduce((s, h) => s + h.totalCommits, 0)}
+          </div>
           <div className="text-[10px] text-gray-500">Across all hotspot files</div>
         </Card>
       </div>
@@ -503,7 +505,9 @@ export function AnalyticsDashboard() {
                 onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
                 className="px-2 py-1.5 bg-[#0a0a0a] border border-white/10 rounded-lg hover:border-orange-500/50 transition-colors"
               >
-                <ArrowUpDown className={`h-3.5 w-3.5 ${sortOrder === 'desc' ? 'rotate-180' : ''} transition-transform`} />
+                <ArrowUpDown
+                  className={`h-3.5 w-3.5 ${sortOrder === 'desc' ? 'rotate-180' : ''} transition-transform`}
+                />
               </button>
             </div>
           </div>

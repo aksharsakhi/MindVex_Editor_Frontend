@@ -32,12 +32,13 @@ import {
   X,
   Info,
   LayoutDashboard,
-  Play
+  Play,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MarkdownRenderer as EnhancedMarkdownRenderer } from './MarkdownRenderer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,9 +58,16 @@ interface TreeNode {
 // ─── Tab Registry ─────────────────────────────────────────────────────────────
 
 const DIAGRAM_OPTIONS = [
-  "System Architecture Diagram", "Component Diagram", "Module Dependency Graph",
-  "Function Call Graph", "Sequence Diagram", "API Flow Diagram",
-  "User Flow Diagram", "Data Flow Diagram", "Database ER Diagram", "Deployment Diagram"
+  'System Architecture Diagram',
+  'Component Diagram',
+  'Module Dependency Graph',
+  'Function Call Graph',
+  'Sequence Diagram',
+  'API Flow Diagram',
+  'User Flow Diagram',
+  'Data Flow Diagram',
+  'Database ER Diagram',
+  'Deployment Diagram',
 ];
 
 const KNOWN_TABS: TabConfig[] = [
@@ -77,11 +85,11 @@ const KNOWN_TABS: TabConfig[] = [
     icon: <Share2 className="h-3.5 w-3.5" />,
     group: 'data',
   },
-  ...DIAGRAM_OPTIONS.map(opt => ({
+  ...DIAGRAM_OPTIONS.map((opt) => ({
     key: opt.replace(/\s+/g, '-').toLowerCase() + '-graph.json',
     label: opt,
     icon: <Share2 className="h-3.5 w-3.5" />,
-    group: 'diagrams'
+    group: 'diagrams',
   })),
   { key: 'tree.txt', label: 'Tree', icon: <GitBranch className="h-3.5 w-3.5" />, group: 'structure' },
   { key: 'tree.json', label: 'Tree Visual', icon: <Share2 className="h-3.5 w-3.5" />, group: 'structure' },
@@ -121,7 +129,7 @@ const FILE_DESCRIPTIONS: Record<string, string> = {
   'tree.json': 'Interactive visual file tree',
 };
 
-DIAGRAM_OPTIONS.forEach(opt => {
+DIAGRAM_OPTIONS.forEach((opt) => {
   const key = opt.replace(/\s+/g, '-').toLowerCase() + '-graph.json';
   FILE_ICONS[key] = <Share2 className="h-4 w-4 text-emerald-400" />;
   FILE_DESCRIPTIONS[key] = `Interactive visualization for ${opt}`;
@@ -191,9 +199,7 @@ function DiagramGeneratorPanel({
         <div className="flex items-start justify-between w-full">
           <div className="flex items-center gap-2">
             <Share2 className={`h-4 w-4 ${isRec ? 'text-emerald-400' : 'text-gray-500'}`} />
-            <span className={`text-[11px] font-bold ${isRec ? 'text-emerald-300' : 'text-gray-300'}`}>
-              {opt}
-            </span>
+            <span className={`text-[11px] font-bold ${isRec ? 'text-emerald-300' : 'text-gray-300'}`}>{opt}</span>
           </div>
         </div>
 
@@ -235,7 +241,11 @@ function DiagramGeneratorPanel({
           className="flex items-center justify-center gap-2 px-6 h-10 bg-emerald-500 border border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] text-white text-xs font-bold rounded-xl transition-all whitespace-nowrap"
         >
           {loadingContext ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {loadingContext ? 'Analyzing Codebase...' : recommended.length > 0 ? 'Re-Analyze Codebase' : 'Recommend Diagrams'}
+          {loadingContext
+            ? 'Analyzing Codebase...'
+            : recommended.length > 0
+              ? 'Re-Analyze Codebase'
+              : 'Recommend Diagrams'}
         </button>
       </div>
 
@@ -252,7 +262,7 @@ function DiagramGeneratorPanel({
           </div>
         )}
 
-        {(!displayOther && recommendedOptions.length > 0) && (
+        {!displayOther && recommendedOptions.length > 0 && (
           <div className="flex justify-center -mt-2">
             <button
               onClick={() => setShowAll(true)}
@@ -437,11 +447,7 @@ function DashboardView({
         {renderFileGrid(otherDocs, 'Other Files', 'Additional documentation files')}
       </div>
       {/* Diagram Generator */}
-      <DiagramGeneratorPanel
-        repoUrl={repoUrl}
-        providerInfo={providerInfoObj}
-        onDiagramGenerated={onDiagramGenerated}
-      />
+      <DiagramGeneratorPanel repoUrl={repoUrl} providerInfo={providerInfoObj} onDiagramGenerated={onDiagramGenerated} />
     </div>
   );
 }
@@ -485,217 +491,6 @@ function isAsciiDiagramLine(line: string) {
 
 function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate?: (tab: string) => void }) {
   const [copied, setCopied] = useState(false);
-  const lines = content.split('\n');
-  let inCode = false;
-  let codeLines: string[] = [];
-  let codeLang = '';
-  let diagLines: string[] = [];
-  const elements: React.ReactNode[] = [];
-
-  const flush = (key: string) => {
-    if (isAsciiDiagram(codeLines)) {
-      elements.push(<DiagramBlock key={key} lines={codeLines} />);
-    } else {
-      elements.push(
-        <div key={key} className="my-4 rounded-lg border border-gray-700 bg-[#0a0a0a] overflow-hidden">
-          <div className="bg-gray-900/50 px-4 py-2 text-[10px] text-gray-400 font-semibold border-b border-gray-700 flex items-center justify-between">
-            <span className="uppercase tracking-wide">{codeLang || 'code'}</span>
-            <Code2 className="h-3 w-3 opacity-40" />
-          </div>
-          <pre className="bg-[#0b0b0b] p-4 text-xs text-gray-300 font-mono overflow-x-auto leading-relaxed whitespace-pre">
-            {codeLines.join('\n')}
-          </pre>
-        </div>,
-      );
-    }
-    codeLines = [];
-    codeLang = '';
-  };
-
-  const flushDiag = (key: string) => {
-    if (diagLines.length >= 2) elements.push(<DiagramBlock key={key} lines={diagLines} />);
-    else if (diagLines.length)
-      elements.push(
-        <pre key={key} className="text-xs font-mono text-gray-400 whitespace-pre ml-4">
-          {diagLines.join('\n')}
-        </pre>,
-      );
-    diagLines = [];
-  };
-
-  const renderInline = (text: string, key: string | number) => {
-    if (onNavigate) {
-      const m = text.match(CROSS_REF_RE);
-      if (m) {
-        const ref = m[1];
-        const idx = text.indexOf(m[0]);
-        return (
-          <span key={key}>
-            {text.slice(0, idx)}
-            <button
-              onClick={() => onNavigate(ref)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20 text-[10px] font-mono mx-1 transition-colors"
-            >
-              <FileText className="h-2.5 w-2.5" />
-              {ref}
-            </button>
-            {text.slice(idx + m[0].length)}
-          </span>
-        );
-      }
-
-      if (FILE_LINK_RE.test(text)) {
-        FILE_LINK_RE.lastIndex = 0;
-        const pts: React.ReactNode[] = [];
-        let cur = 0;
-        let m2;
-        while ((m2 = FILE_LINK_RE.exec(text)) !== null) {
-          pts.push(text.slice(cur, m2.index));
-          const [, label, file] = m2;
-
-          if (file.endsWith('-graph.json')) {
-            pts.push(
-              <button
-                key={m2.index}
-                onClick={() => onNavigate(file)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold mx-1 transition-all shadow-lg shadow-emerald-500/5 group"
-              >
-                <Share2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                {label}
-              </button>
-            );
-          } else {
-            pts.push(
-              <button
-                key={m2.index}
-                onClick={() => onNavigate(file)}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 text-[10px] font-mono mx-0.5 transition-colors"
-              >
-                <FileText className="h-2.5 w-2.5" />
-                {label}
-              </button>,
-            );
-          }
-          cur = FILE_LINK_RE.lastIndex;
-        }
-        pts.push(text.slice(cur));
-        return <span key={key}>{pts}</span>;
-      }
-    }
-
-    const segs = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
-    return (
-      <span key={key}>
-        {segs.map((s, j) => {
-          if (s.startsWith('**') && s.endsWith('**'))
-            return (
-              <strong key={j} className="text-white font-semibold">
-                {s.slice(2, -2)}
-              </strong>
-            );
-          if (s.startsWith('`') && s.endsWith('`'))
-            return (
-              <code
-                key={j}
-                className="bg-gray-800 px-1.5 py-0.5 rounded text-gray-200 text-[11px] font-mono border border-gray-700"
-              >
-                {s.slice(1, -1)}
-              </code>
-            );
-          return s;
-        })}
-      </span>
-    );
-  };
-
-  lines.forEach((line, i) => {
-    if (line.startsWith('```')) {
-      if (diagLines.length) flushDiag(`diag-${i}`);
-      if (inCode) {
-        inCode = false;
-        flush(`code-${i}`);
-      } else {
-        inCode = true;
-        codeLang = line.slice(3).trim();
-      }
-      return;
-    }
-    if (inCode) {
-      codeLines.push(line);
-      return;
-    }
-
-    if (isAsciiDiagramLine(line) && line.trim()) {
-      diagLines.push(line);
-      return;
-    } else if (diagLines.length) {
-      flushDiag(`diag-${i}`);
-    }
-
-    if (line.startsWith('# '))
-      return elements.push(
-        <h1 key={i} className="text-2xl font-bold text-white mt-8 mb-5 pb-3 border-b border-gray-700">
-          {line.slice(2)}
-        </h1>,
-      );
-    if (line.startsWith('## '))
-      return elements.push(
-        <h2 key={i} className="text-xl font-bold text-white mt-7 mb-3">
-          {line.slice(3)}
-        </h2>,
-      );
-    if (line.startsWith('### '))
-      return elements.push(
-        <h3 key={i} className="text-base font-semibold text-gray-200 mt-5 mb-2">
-          {line.slice(4)}
-        </h3>,
-      );
-    if (line.startsWith('#### '))
-      return elements.push(
-        <h4 key={i} className="text-sm font-semibold text-gray-300 mt-4 mb-2">
-          {line.slice(5)}
-        </h4>,
-      );
-
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      return elements.push(
-        <div key={i} className="flex items-start gap-2.5 ml-4 text-gray-300 text-[13px] mb-1.5 leading-relaxed">
-          <span className="text-gray-500 mt-1.5 flex-shrink-0">•</span>
-          <span className="flex-1">{renderInline(line.slice(2), i)}</span>
-        </div>,
-      );
-    }
-    if (/^\d+\.\s/.test(line)) {
-      const m = line.match(/^(\d+)\.\s(.*)/);
-      if (m)
-        return elements.push(
-          <div key={i} className="flex gap-3 ml-4 mb-2 text-[13px] text-gray-300 leading-relaxed">
-            <span className="text-emerald-500 font-mono text-[11px] mt-0.5 flex-shrink-0 w-5">{m[1]}.</span>
-            <span className="flex-1">{renderInline(m[2], i)}</span>
-          </div>,
-        );
-    }
-    if (line.startsWith('> '))
-      return elements.push(
-        <blockquote
-          key={i}
-          className="ml-4 pl-4 border-l-2 border-emerald-500/20 text-gray-500 text-[13px] italic my-4 py-1 bg-white/[0.02] rounded-r-lg"
-        >
-          {line.slice(2)}
-        </blockquote>,
-      );
-    if (/^---+$/.test(line.trim())) return elements.push(<hr key={i} className="border-white/5 my-8" />);
-    if (line.trim() === '') return elements.push(<div key={i} className="h-4" />);
-
-    elements.push(
-      <p key={i} className="text-gray-400 text-[13px] leading-relaxed mb-3">
-        {renderInline(line, i)}
-      </p>,
-    );
-  });
-
-  if (inCode && codeLines.length) flush('code-final');
-  if (diagLines.length) flushDiag('diag-final');
 
   return (
     <div className="relative group/md">
@@ -705,12 +500,12 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }}
-        className="absolute top-0 right-0 opacity-0 group-hover/md:opacity-100 flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 transition-all z-10"
+        className="absolute top-2 right-2 opacity-0 group-hover/md:opacity-100 flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 transition-all z-10"
       >
         {copied ? <CheckCheck className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         {copied ? 'Copied!' : 'Copy'}
       </button>
-      <div className="pr-2">{elements}</div>
+      <EnhancedMarkdownRenderer content={content} />
     </div>
   );
 }
@@ -799,7 +594,12 @@ function SnapshotDashboard({ content }: { content: string }) {
       icon: <Activity className="h-4 w-4" />,
       color: 'text-purple-400',
     },
-    { label: 'Health', val: data?.health || 'Unknown', icon: <HeartPulse className="h-4 w-4" />, color: 'text-red-400' },
+    {
+      label: 'Health',
+      val: data?.health || 'Unknown',
+      icon: <HeartPulse className="h-4 w-4" />,
+      color: 'text-red-400',
+    },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -839,8 +639,9 @@ function TreeVisualizer({ content }: { content: string }) {
       <div className={depth > 0 ? 'ml-4' : ''}>
         <div
           onClick={() => isDir && toggle(id)}
-          className={`flex items-center gap-2 py-1 px-2 rounded-lg transition-colors ${isDir ? 'cursor-pointer hover:bg-white/5 text-gray-300' : 'text-gray-500'
-            }`}
+          className={`flex items-center gap-2 py-1 px-2 rounded-lg transition-colors ${
+            isDir ? 'cursor-pointer hover:bg-white/5 text-gray-300' : 'text-gray-500'
+          }`}
         >
           {isDir ? (
             isExp ? (
@@ -893,21 +694,25 @@ function ArchitectureVisualizer({ content }: { content: string }) {
     const rawNodes = raw.graph?.nodes || raw.nodes || [];
     const rawEdges = raw.graph?.links || raw.graph?.edges || raw.links || raw.edges || [];
 
-    data.nodes = Array.isArray(rawNodes) ? rawNodes.map((n: any) => ({
-      id: n?.data?.id || n?.id,
-      label: n?.data?.label || n?.label,
-      type: n?.data?.type || n?.type || 'module',
-      ...n?.data,
-      ...n,
-    })) : [];
+    data.nodes = Array.isArray(rawNodes)
+      ? rawNodes.map((n: any) => ({
+          id: n?.data?.id || n?.id,
+          label: n?.data?.label || n?.label,
+          type: n?.data?.type || n?.type || 'module',
+          ...n?.data,
+          ...n,
+        }))
+      : [];
 
-    data.links = Array.isArray(rawEdges) ? rawEdges.map((e: any) => ({
-      source: e?.data?.source || e?.source,
-      target: e?.data?.target || e?.target,
-      label: e?.data?.relation || e?.data?.label || e?.relation || e?.label,
-      ...e?.data,
-      ...e,
-    })) : [];
+    data.links = Array.isArray(rawEdges)
+      ? rawEdges.map((e: any) => ({
+          source: e?.data?.source || e?.source,
+          target: e?.data?.target || e?.target,
+          label: e?.data?.relation || e?.data?.label || e?.relation || e?.label,
+          ...e?.data,
+          ...e,
+        }))
+      : [];
   } catch (e) {
     console.error('[ArchitectureVisualizer] Failed to parse JSON:', e);
   }
@@ -940,7 +745,7 @@ function ArchitectureVisualizer({ content }: { content: string }) {
         if (entry.contentBoxSize) {
           setDimensions({
             width: entry.contentRect.width,
-            height: entry.contentRect.height
+            height: entry.contentRect.height,
           });
         }
       }
@@ -951,7 +756,10 @@ function ArchitectureVisualizer({ content }: { content: string }) {
   }, []);
 
   return (
-    <div ref={containerRef} className="h-full min-h-[500px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
+    <div
+      ref={containerRef}
+      className="h-full min-h-[500px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group"
+    >
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
         <h3 className="text-xs font-bold text-white flex items-center gap-2">
           <Share2 className="h-3 w-3 text-emerald-400" />
@@ -966,7 +774,7 @@ function ArchitectureVisualizer({ content }: { content: string }) {
           dagMode="td"
           dagLevelDistance={100}
           nodeRelSize={14}
-          nodeLabel={() => ""} // Disable default tooltip in favor of rich shapes
+          nodeLabel={() => ''} // Disable default tooltip in favor of rich shapes
           nodeCanvasObject={(node: any, ctx, globalScale) => {
             const label = node.label || node.id;
             const typeText = (node.type || 'module').toUpperCase();
@@ -982,16 +790,25 @@ function ArchitectureVisualizer({ content }: { content: string }) {
             const typeWidth = ctx.measureText(typeText).width;
 
             // Card dimensions
-            const width = Math.max(textWidth, typeWidth) + (24 / globalScale);
+            const width = Math.max(textWidth, typeWidth) + 24 / globalScale;
             const height = 36 / globalScale;
 
             const x = node.x - width / 2;
             const y = node.y - height / 2;
 
             const colors: Record<string, string> = {
-              ui: '#ec4899', controller: '#f43f5e', service: '#3b82f6', api: '#8b5cf6', repository: '#eab308',
-              database: '#f59e0b', module: '#10b981', function: '#6366f1',
-              external: '#ef4444', utility: '#64748b', component: '#14b8a6', default: '#6b7280'
+              ui: '#ec4899',
+              controller: '#f43f5e',
+              service: '#3b82f6',
+              api: '#8b5cf6',
+              repository: '#eab308',
+              database: '#f59e0b',
+              module: '#10b981',
+              function: '#6366f1',
+              external: '#ef4444',
+              utility: '#64748b',
+              component: '#14b8a6',
+              default: '#6b7280',
             };
             const color = colors[node.type?.toLowerCase()] || colors.default;
 
@@ -1029,12 +846,12 @@ function ArchitectureVisualizer({ content }: { content: string }) {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillStyle = color;
-            ctx.fillText(typeText, node.x, y + (3 / globalScale));
+            ctx.fillText(typeText, node.x, y + 3 / globalScale);
 
             // Render node label
             ctx.font = `600 ${fontSize}px Inter, sans-serif`;
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(label, node.x, node.y + (2 / globalScale));
+            ctx.fillText(label, node.x, node.y + 2 / globalScale);
           }}
           linkColor={() => 'rgba(255, 255, 255, 0.2)'}
           linkWidth={1.5}
@@ -1051,7 +868,7 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
             const textPos = {
               x: start.x + (end.x - start.x) / 2,
-              y: start.y + (end.y - start.y) / 2
+              y: start.y + (end.y - start.y) / 2,
             };
 
             const relLink = { x: end.x - start.x, y: end.y - start.y };
@@ -1075,7 +892,13 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
             ctx.fillStyle = 'rgba(8, 8, 8, 0.9)';
             ctx.beginPath();
-            ctx.roundRect(-textWidth / 2 - padding, -bgHeight / 2 - padding / 2, textWidth + padding * 2, bgHeight, padding);
+            ctx.roundRect(
+              -textWidth / 2 - padding,
+              -bgHeight / 2 - padding / 2,
+              textWidth + padding * 2,
+              bgHeight,
+              padding,
+            );
             ctx.fill();
 
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
@@ -1157,7 +980,8 @@ function FileContent({
 }) {
   if (filename === 'api-descriptions.json') return <ApiExplorer content={content} />;
   if (filename === 'doc_snapshot.json') return <SnapshotDashboard content={content} />;
-  if (filename === 'architecture-graph.json' || filename.endsWith('-graph.json')) return <ArchitectureVisualizer content={content} />;
+  if (filename === 'architecture-graph.json' || filename.endsWith('-graph.json'))
+    return <ArchitectureVisualizer content={content} />;
   if (filename === 'tree.json') return <TreeVisualizer content={content} />;
   if (filename === 'tree.txt')
     return (
@@ -1418,7 +1242,11 @@ export function LivingWiki() {
                       onDiagramGenerated={(fileName, content) => {
                         setDocFiles((prev) => {
                           const newFiles = { ...prev, [fileName]: content };
-                          try { sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles)); } catch { /* ignore */ }
+                          try {
+                            sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles));
+                          } catch {
+                            /* ignore */
+                          }
                           return newFiles;
                         });
                         setActiveTab(fileName);
@@ -1467,9 +1295,14 @@ export function LivingWiki() {
                         <button
                           onClick={() => {
                             if (!docFiles) return;
-                            const currentReadme = docFiles['README.md'] || '# System Documentation\n\nThis project contains auto-generated documentation.';
-                            const title = activeTab.replace('-graph.json', '')
-                              .split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                            const currentReadme =
+                              docFiles['README.md'] ||
+                              '# System Documentation\n\nThis project contains auto-generated documentation.';
+                            const title = activeTab
+                              .replace('-graph.json', '')
+                              .split('-')
+                              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                              .join(' ');
 
                             const diagramLink = `[View ${title} Interactive Graph](${activeTab})`;
                             if (currentReadme.includes(diagramLink) || currentReadme.includes(`](${activeTab})`)) {
@@ -1482,7 +1315,11 @@ export function LivingWiki() {
 
                             const newFiles = { ...docFiles, 'README.md': updatedReadme };
                             setDocFiles(newFiles);
-                            try { sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles)); } catch { /* ignore */ }
+                            try {
+                              sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles));
+                            } catch {
+                              /* ignore */
+                            }
 
                             toast.success(`${title} added to README!`);
                           }}

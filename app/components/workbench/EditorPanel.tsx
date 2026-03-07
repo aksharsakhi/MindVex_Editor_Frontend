@@ -26,6 +26,7 @@ import { Search } from './Search';
 import { classNames } from '~/utils/classNames';
 import { LockManager } from './LockManager';
 import { ChatPanel } from './ChatPanel';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface EditorPanelProps {
   unsavedFiles?: Set<string>;
@@ -63,6 +64,7 @@ export const EditorPanel = memo(
     const showTerminal = useStore(workbenchStore.showTerminal);
     const files = useStore(workbenchStore.files);
     const [showChat, setShowChat] = useState(false);
+    const [previewMode, setPreviewMode] = useState(false);
 
     const activeFileSegments = useMemo(() => {
       if (!editorDocument) {
@@ -84,6 +86,11 @@ export const EditorPanel = memo(
     // Multi-tab functionality
     const [openTabs, setOpenTabs] = useState<string[]>(selectedFile ? [selectedFile] : []);
     const [activeTab, setActiveTab] = useState<string | undefined>(selectedFile);
+
+    // Check if active file is a markdown file
+    const isMarkdownFile = useMemo(() => {
+      return activeTab?.toLowerCase().endsWith('.md') || activeTab?.toLowerCase().endsWith('.markdown');
+    }, [activeTab]);
 
     // Handle file selection to open in a new tab
     const handleFileSelectWithTab = (filePath: string | undefined) => {
@@ -226,6 +233,37 @@ export const EditorPanel = memo(
               <div className="h-full flex flex-col overflow-hidden">
                 {activeTab ? (
                   <>
+                    {/* Markdown Preview Mode Switcher */}
+                    {isMarkdownFile && (
+                      <div className="flex items-center border-b border-mindvex-elements-borderColor bg-mindvex-elements-background-depth-2">
+                        <button
+                          onClick={() => setPreviewMode(false)}
+                          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                            !previewMode
+                              ? 'bg-mindvex-elements-background-depth-1 text-mindvex-elements-textPrimary border-b-2 border-orange-500'
+                              : 'text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary hover:bg-mindvex-elements-background-depth-3'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="i-ph:code" />
+                            Code
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => setPreviewMode(true)}
+                          className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                            previewMode
+                              ? 'bg-mindvex-elements-background-depth-1 text-mindvex-elements-textPrimary border-b-2 border-orange-500'
+                              : 'text-mindvex-elements-textSecondary hover:text-mindvex-elements-textPrimary hover:bg-mindvex-elements-background-depth-3'
+                          }`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="i-ph:eye" />
+                            Preview
+                          </div>
+                        </button>
+                      </div>
+                    )}
                     {/* Editor Controls */}
                     <div className="flex items-center justify-between p-2 bg-mindvex-elements-background-depth-2 border-b border-mindvex-elements-borderColor">
                       <div className="text-sm text-mindvex-elements-textSecondary truncate max-w-xs">
@@ -270,16 +308,20 @@ export const EditorPanel = memo(
                     </div>
                     <PanelGroup direction="horizontal">
                       <Panel className="h-full overflow-hidden modern-scrollbar" minSize={30}>
-                        <CodeMirrorEditor
-                          theme={theme}
-                          editable={!isStreaming}
-                          settings={editorSettings}
-                          doc={editorDocument}
-                          autoFocusOnDocumentChange={!isMobile()}
-                          onScroll={onEditorScroll}
-                          onChange={onEditorChange}
-                          onSave={onFileSave}
-                        />
+                        {isMarkdownFile && previewMode ? (
+                          <MarkdownRenderer content={editorDocument?.value || ''} />
+                        ) : (
+                          <CodeMirrorEditor
+                            theme={theme}
+                            editable={!isStreaming}
+                            settings={editorSettings}
+                            doc={editorDocument}
+                            autoFocusOnDocumentChange={!isMobile()}
+                            onScroll={onEditorScroll}
+                            onChange={onEditorChange}
+                            onSave={onFileSave}
+                          />
+                        )}
                       </Panel>
                       {showChat && (
                         <>
