@@ -413,9 +413,12 @@ export function KnowledgeGraphPage({ onBack }: Props) {
       // Zoom to fit after data changes
       setTimeout(() => {
         if (viewMode === '2d' && graphRef.current?.zoomToFit) {
-          graphRef.current.zoomToFit(400, 100);
+          graphRef.current.zoomToFit(600, 100);
+        } else if (viewMode === '3d' && graphRef.current?.cameraPosition) {
+          // Robust 3D auto-centering for the entire graph cluster
+          graphRef.current.zoomToFit(800, 150);
         }
-      }, 500);
+      }, 800);
     }
   }, [forceGraphData, viewMode]);
 
@@ -1123,10 +1126,10 @@ export function KnowledgeGraphPage({ onBack }: Props) {
                       sprite.color = '#ffffff';
                       sprite.backgroundColor = node.color;
                       sprite.padding = 4;
-                      sprite.borderRadius = 8;
-                      sprite.borderWidth = 1;
-                      sprite.borderColor = '#ffffff';
-                      sprite.textHeight = 6;
+                      sprite.borderRadius = 12;
+                      sprite.borderWidth = 0.5;
+                      sprite.borderColor = 'rgba(255,255,255,0.5)';
+                      sprite.textHeight = 1.8;
                       return sprite;
                     }}
                     nodeThreeObjectExtend={false}
@@ -1221,10 +1224,10 @@ export function KnowledgeGraphPage({ onBack }: Props) {
                         sprite.color = '#ffffff';
                         sprite.backgroundColor = node.color;
                         sprite.padding = 4;
-                        sprite.borderRadius = 8;
-                        sprite.borderWidth = 1;
-                        sprite.borderColor = '#ffffff';
-                        sprite.textHeight = 6;
+                        sprite.borderRadius = 12;
+                        sprite.borderWidth = 0.5;
+                        sprite.borderColor = 'rgba(255,255,255,0.5)';
+                        sprite.textHeight = 1.8;
                         return sprite;
                       }}
                       nodeThreeObjectExtend={false}
