@@ -591,6 +591,31 @@ export function KnowledgeGraphPage({ onBack }: Props) {
         });
       }
 
+      // --- CRITICAL MERGE: Preserve original backend SCIP edges ---
+      // If frontend AST couldn't read file bodies, or AI hallucinated and skipped edges,
+      // we merge back the reliable original edges to ensure the knowledge graph is deeply connected.
+      if (graphData && graphData.edges) {
+        const existingEdgeSet = new Set<string>();
+        newEdges.forEach((e) => {
+          const s = typeof e.data.source === 'string' ? e.data.source : e.data.source?.id;
+          const t = typeof e.data.target === 'string' ? e.data.target : e.data.target?.id;
+          existingEdgeSet.add(`${s}-to-${t}`);
+        });
+
+        graphData.edges.forEach((origEdge: any) => {
+          const s = typeof origEdge.data.source === 'string' ? origEdge.data.source : origEdge.data.source?.id;
+          const t = typeof origEdge.data.target === 'string' ? origEdge.data.target : origEdge.data.target?.id;
+          const key = `${s}-to-${t}`;
+
+          if (!existingEdgeSet.has(key)) {
+            newEdges.push(origEdge);
+            existingEdgeSet.add(key);
+          }
+        });
+
+        console.log(`Merged backend graph metrics. Final Nodes: ${newNodes.length}, Final Edges: ${newEdges.length}`);
+      }
+
       // Update the graph cache with the new, AI-verified data
       graphCache.set({
         nodes: newNodes,
