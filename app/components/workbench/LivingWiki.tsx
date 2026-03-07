@@ -475,23 +475,6 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
 
   const renderInline = (text: string, key: string | number) => {
     if (onNavigate) {
-      if (text.includes('architecture-graph.json')) {
-        const idx = text.indexOf('architecture-graph.json');
-        return (
-          <span key={key}>
-            {text.slice(0, idx)}
-            <button
-              onClick={() => onNavigate('architecture-graph.json')}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold mx-1 transition-all shadow-lg shadow-emerald-500/5 group"
-            >
-              <Share2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
-              View Interactive Graph
-            </button>
-            {text.slice(idx + 'architecture-graph.json'.length)}
-          </span>
-        );
-      }
-
       const m = text.match(CROSS_REF_RE);
       if (m) {
         const ref = m[1];
@@ -519,16 +502,30 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
         while ((m2 = FILE_LINK_RE.exec(text)) !== null) {
           pts.push(text.slice(cur, m2.index));
           const [, label, file] = m2;
-          pts.push(
-            <button
-              key={m2.index}
-              onClick={() => onNavigate(file)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 text-[10px] font-mono mx-0.5 transition-colors"
-            >
-              <FileText className="h-2.5 w-2.5" />
-              {label}
-            </button>,
-          );
+
+          if (file.endsWith('-graph.json')) {
+            pts.push(
+              <button
+                key={m2.index}
+                onClick={() => onNavigate(file)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold mx-1 transition-all shadow-lg shadow-emerald-500/5 group"
+              >
+                <Share2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                {label}
+              </button>
+            );
+          } else {
+            pts.push(
+              <button
+                key={m2.index}
+                onClick={() => onNavigate(file)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 text-[10px] font-mono mx-0.5 transition-colors"
+              >
+                <FileText className="h-2.5 w-2.5" />
+                {label}
+              </button>,
+            );
+          }
           cur = FILE_LINK_RE.lastIndex;
         }
         pts.push(text.slice(cur));
@@ -1415,6 +1412,36 @@ export function LivingWiki() {
                           </p>
                         </div>
                       </div>
+
+                      {activeTab.endsWith('-graph.json') && (
+                        <button
+                          onClick={() => {
+                            if (!docFiles) return;
+                            const currentReadme = docFiles['README.md'] || '# System Documentation\n\nThis project contains auto-generated documentation.';
+                            const title = activeTab.replace('-graph.json', '')
+                              .split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+                            const diagramLink = `[View ${title} Interactive Graph](${activeTab})`;
+                            if (currentReadme.includes(diagramLink) || currentReadme.includes(`](${activeTab})`)) {
+                              toast.info('Diagram is already in the README!');
+                              return;
+                            }
+
+                            const appendText = `\n\n### Diagram: ${title}\n${diagramLink}\n\n`;
+                            const updatedReadme = currentReadme + appendText;
+
+                            const newFiles = { ...docFiles, 'README.md': updatedReadme };
+                            setDocFiles(newFiles);
+                            try { sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles)); } catch { /* ignore */ }
+
+                            toast.success(`${title} added to README!`);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 text-xs font-bold transition-all shadow-lg shadow-blue-500/5"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          Add to README
+                        </button>
+                      )}
 
                       {activeTab.endsWith('.md') && (
                         <div className="relative group">
