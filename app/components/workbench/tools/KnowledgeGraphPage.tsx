@@ -427,25 +427,42 @@ export function KnowledgeGraphPage({ onBack }: Props) {
 
       // ─── Build graph from AI analysis ──────────────────────────────────────────
 
-      let newNodes: any[] = [];
+      // 1. Ensure we NEVER drop original node IDs or graph structure by defaulting nodes to the working SCIP payload
+      let newNodes: any[] = JSON.parse(JSON.stringify(graphData.nodes));
       let newEdges: any[] = [];
 
-      if (projectAnalysis.llmAnalysis?.graph && projectAnalysis.llmAnalysis.graph.edges.length > 0) {
-        // Use AI-generated graph data
-        newNodes = projectAnalysis.llmAnalysis.graph.nodes.map((node) => ({
-          data: {
-            id: node.id,
-            label: node.label,
-            filePath: node.id,
-            language: node.id.split('.').pop() || 'unknown',
-          },
-        }));
+      const filePathToNodeId = new Map<string, string>();
 
+      // Decorate our surviving SCIP nodes with analytical metrics from AST & Map their IDs
+      newNodes = newNodes.map((node: any) => {
+        const language = node.data.language || 'javascript';
+        const fileName = node.data.label || 'unknown';
+        const filePath = node.data.filePath || `${fileName}.${language}`;
+
+        filePathToNodeId.set(filePath, node.data.id || node.id);
+        // Sometimes AI hallucinates just the filename
+        filePathToNodeId.set(fileName, node.data.id || node.id);
+
+        const analysisFile = projectAnalysis?.files?.find((f) => f.filePath === filePath);
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            complexity: analysisFile?.metadata?.complexity || node.data.complexity || 1,
+            linesOfCode: analysisFile?.metadata?.linesOfCode || node.data.linesOfCode || 1,
+            type: node.data.type || 'module'
+          }
+        };
+      });
+
+      if (projectAnalysis.llmAnalysis?.graph && projectAnalysis.llmAnalysis.graph.edges.length > 0) {
+        // Use AI-generated graph data map edges onto our strict original Node IDs
         newEdges = projectAnalysis.llmAnalysis.graph.edges.map((edge, idx) => ({
           data: {
             id: `ai-edge-${idx}`,
-            source: edge.source,
-            target: edge.target,
+            source: filePathToNodeId.get(edge.source) || edge.source,
+            target: filePathToNodeId.get(edge.target) || edge.target,
             label: edge.type,
             strength: edge.strength || 1,
           },
@@ -455,18 +472,6 @@ export function KnowledgeGraphPage({ onBack }: Props) {
       } else {
         // Fallback to basic AST-based graph if AI didn't provide graph data OR returned no edges
         console.log('AI returned no edges, falling back to AST-based graph construction');
-
-        newNodes = projectAnalysis.files.map((file) => ({
-          data: {
-            id: file.filePath,
-            label: file.filePath.split('/').pop() || 'unknown',
-            filePath: file.filePath,
-            language: file.language,
-            complexity: file.metadata?.complexity || 1,
-            linesOfCode: file.metadata?.linesOfCode || 1,
-            type: 'module'
-          },
-        }));
 
         projectAnalysis.files.forEach((file) => {
           file.metadata?.imports?.forEach((imp) => {
@@ -483,11 +488,14 @@ export function KnowledgeGraphPage({ onBack }: Props) {
             });
 
             if (target) {
+              const mappedSource = filePathToNodeId.get(file.filePath) || file.filePath;
+              const mappedTarget = filePathToNodeId.get(target.filePath) || target.filePath;
+
               newEdges.push({
                 data: {
-                  id: `${file.filePath}-${target.filePath}`,
-                  source: file.filePath,
-                  target: target.filePath,
+                  id: `${mappedSource}-${mappedTarget}`,
+                  source: mappedSource,
+                  target: mappedTarget,
                   type: 'import',
                   label: imp.symbols.join(', ') || 'imports',
                 },
@@ -531,18 +539,21 @@ export function KnowledgeGraphPage({ onBack }: Props) {
                 const usageRegex = new RegExp(`\\b${siblingName}\\b`);
 
                 if (usageRegex.test(fileContent)) {
+                  const mappedSource = filePathToNodeId.get(file.filePath) || file.filePath;
+                  const mappedTarget = filePathToNodeId.get(sibling.filePath) || sibling.filePath;
+
                   // Avoid duplicates
-                  const edgeId = `${file.filePath}-${sibling.filePath}`;
+                  const edgeId = `${mappedSource}-${mappedTarget}`;
 
                   if (!newEdges.some((e) => e.data.id === edgeId)) {
                     console.log(
-                      `Adding implicit package edge: ${file.filePath} -> ${sibling.filePath} (${siblingName})`,
+                      `Adding implicit package edge: ${mappedSource} -> ${mappedTarget} (${siblingName})`,
                     );
                     newEdges.push({
                       data: {
                         id: edgeId,
-                        source: file.filePath,
-                        target: sibling.filePath,
+                        source: mappedSource,
+                        target: mappedTarget,
                         type: 'package_reference',
                         label: 'uses',
                         strength: 2,
@@ -571,14 +582,17 @@ export function KnowledgeGraphPage({ onBack }: Props) {
               const moduleName = sibling.filePath.split('/').pop()?.replace('.py', '');
 
               if (moduleName && fileContent.includes(moduleName)) {
-                const edgeId = `${file.filePath}-${sibling.filePath}`;
+                const mappedSource = filePathToNodeId.get(file.filePath) || file.filePath;
+                const mappedTarget = filePathToNodeId.get(sibling.filePath) || sibling.filePath;
+
+                const edgeId = `${mappedSource}-${mappedTarget}`;
 
                 if (!newEdges.some((e) => e.data.id === edgeId)) {
                   newEdges.push({
                     data: {
                       id: edgeId,
-                      source: file.filePath,
-                      target: sibling.filePath,
+                      source: mappedSource,
+                      target: mappedTarget,
                       type: 'module_reference',
                       label: 'uses',
                       strength: 1,
