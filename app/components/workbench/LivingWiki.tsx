@@ -879,6 +879,8 @@ function ArchitectureVisualizer({ content }: { content: string }) {
         <ForceGraph2D
           ref={fgRef}
           graphData={data}
+          dagMode="td"
+          dagLevelDistance={80}
           nodeLabel="label"
           nodeColor={(n: any) => {
             const colors: Record<string, string> = {
