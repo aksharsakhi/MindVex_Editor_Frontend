@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ForceGraph2D from 'react-force-graph-2d';
+import * as d3 from 'd3-force';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -866,6 +867,15 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
   const fgRef = useRef<any>();
 
+  useEffect(() => {
+    // Inject dynamic repulsion to allow nodes to breathe and break out of clustered square patterns
+    if (fgRef.current) {
+      fgRef.current.d3Force('charge').strength(-450).distanceMax(500);
+      fgRef.current.d3Force('link').distance(90);
+      fgRef.current.d3Force('collide', d3.forceCollide().radius(40));
+    }
+  }, [data]);
+
   return (
     <div className="h-[500px] w-full bg-[#080808] rounded-2xl border border-white/5 overflow-hidden relative group">
       <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
@@ -880,75 +890,91 @@ function ArchitectureVisualizer({ content }: { content: string }) {
           ref={fgRef}
           graphData={data}
           dagMode="td"
-          dagLevelDistance={80}
-          nodeLabel="label"
-          nodeColor={(n: any) => {
-            const colors: Record<string, string> = {
-              ui: '#ec4899', service: '#3b82f6', api: '#8b5cf6',
-              database: '#f59e0b', module: '#10b981', function: '#6366f1',
-              external: '#ef4444', component: '#14b8a6', default: '#6b7280'
-            };
-            return colors[n.type?.toLowerCase()] || colors.default;
-          }}
+          dagLevelDistance={100}
+          nodeRelSize={14}
+          nodeLabel={() => ""} // Disable default tooltip in favor of rich shapes
           nodeCanvasObject={(node: any, ctx, globalScale) => {
             const label = node.label || node.id;
-            const fontSize = Math.max(12 / globalScale, 2);
-            ctx.font = `${fontSize}px Inter, sans-serif`;
+            const typeText = (node.type || 'module').toUpperCase();
+
+            // Font sizing
+            const fontSize = Math.max(12 / globalScale, 2.5);
+            const typeFontSize = Math.max(8 / globalScale, 1.5);
+
+            // Measure widths
+            ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+            const textWidth = ctx.measureText(label).width;
+            ctx.font = `bold ${typeFontSize}px Inter, sans-serif`;
+            const typeWidth = ctx.measureText(typeText).width;
+
+            // Card dimensions
+            const width = Math.max(textWidth, typeWidth) + (24 / globalScale);
+            const height = 36 / globalScale;
+
+            const x = node.x - width / 2;
+            const y = node.y - height / 2;
 
             const colors: Record<string, string> = {
-              ui: '#ec4899', service: '#3b82f6', api: '#8b5cf6',
+              ui: '#ec4899', controller: '#f43f5e', service: '#3b82f6', api: '#8b5cf6', repository: '#eab308',
               database: '#f59e0b', module: '#10b981', function: '#6366f1',
-              external: '#ef4444', component: '#14b8a6', default: '#6b7280'
+              external: '#ef4444', utility: '#64748b', component: '#14b8a6', default: '#6b7280'
             };
             const color = colors[node.type?.toLowerCase()] || colors.default;
 
-            const radius = 6;
+            const radius = 4 / globalScale;
 
-            // Draw circle
+            // Base shape (rounded rect)
             ctx.beginPath();
-            ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-            ctx.fillStyle = color;
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.arcTo(x + width, y, x + width, y + height, radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.arcTo(x + width, y + height, x, y + height, radius);
+            ctx.lineTo(x + radius, y + height);
+            ctx.arcTo(x, y + height, x, y, radius);
+            ctx.lineTo(x, y + radius);
+            ctx.arcTo(x, y, x + width, y, radius);
+            ctx.closePath();
+
+            ctx.fillStyle = '#111111';
             ctx.fill();
 
-            // Draw border
-            ctx.lineWidth = 1.5 / globalScale;
-            ctx.strokeStyle = '#ffffff55';
+            ctx.lineWidth = 1.2 / globalScale;
+            ctx.strokeStyle = color;
             ctx.stroke();
 
-            // Draw text
-            if (globalScale >= 0.8) {
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'top';
+            // Type Ribbon Header
+            ctx.save();
+            ctx.clip(); // Constrain to rounded outline
+            ctx.fillStyle = color + '22'; // slight highlight tint
+            ctx.fillRect(x, y, width, 14 / globalScale);
+            ctx.restore();
 
-              // Text background for readability
-              const textWidth = ctx.measureText(label).width;
-              const bgHeight = fontSize + 2 / globalScale;
-              const textY = node.y + radius + 4 / globalScale;
+            // Render type text
+            ctx.font = `bold ${typeFontSize}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = color;
+            ctx.fillText(typeText, node.x, y + (3 / globalScale));
 
-              ctx.fillStyle = 'rgba(8, 8, 8, 0.75)';
-              ctx.fillRect(node.x - textWidth / 2 - 2 / globalScale, textY - 1 / globalScale, textWidth + 4 / globalScale, bgHeight);
-
-              // Text itself
-              ctx.fillStyle = '#e5e7eb';
-              ctx.fillText(label, node.x, textY);
-            }
+            // Render node label
+            ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(label, node.x, node.y + (2 / globalScale));
           }}
-          linkColor={() => 'rgba(255, 255, 255, 0.15)'}
+          linkColor={() => 'rgba(255, 255, 255, 0.2)'}
           linkWidth={1.5}
-          linkDirectionalArrowLength={4}
+          linkDirectionalArrowLength={5}
           linkDirectionalArrowRelPos={1}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link: any, ctx, globalScale) => {
             const label = link.label;
-            if (!label || globalScale < 1.2) return;
+            if (!label || globalScale < 0.8) return;
 
             const start = link.source;
             const end = link.target;
-
-            // ignore unbound links
             if (typeof start !== 'object' || typeof end !== 'object') return;
 
-            // calculate label positioning
             const textPos = {
               x: start.x + (end.x - start.x) / 2,
               y: start.y + (end.y - start.y) / 2
@@ -956,12 +982,11 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
             const relLink = { x: end.x - start.x, y: end.y - start.y };
             let textAngle = Math.atan2(relLink.y, relLink.x);
-            // maintain label vertical orientation for legibility
             if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
             if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
 
-            const fontSize = Math.max(10 / globalScale, 2);
-            ctx.font = `${fontSize}px Inter, sans-serif`;
+            const fontSize = Math.max(9 / globalScale, 2);
+            ctx.font = `500 ${fontSize}px Inter, sans-serif`;
 
             ctx.save();
             ctx.translate(textPos.x, textPos.y);
@@ -970,22 +995,23 @@ function ArchitectureVisualizer({ content }: { content: string }) {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Readability background
             const textWidth = ctx.measureText(label).width;
-            const bgHeight = fontSize + 2 / globalScale;
-            ctx.fillStyle = 'rgba(8, 8, 8, 0.85)';
-            ctx.fillRect(-textWidth / 2 - 2 / globalScale, -bgHeight / 2 - 4 / globalScale, textWidth + 4 / globalScale, bgHeight);
+            const bgHeight = fontSize + 4 / globalScale;
+            const padding = 4 / globalScale;
 
-            // Text
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.fillText(label, 0, -4 / globalScale);
+            ctx.fillStyle = 'rgba(8, 8, 8, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(-textWidth / 2 - padding, -bgHeight / 2 - padding / 2, textWidth + padding * 2, bgHeight, padding);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillText(label, 0, 0);
             ctx.restore();
           }}
-          nodeRelSize={6}
           backgroundColor="#080808"
           width={800}
           height={500}
-          d3VelocityDecay={0.3}
+          d3VelocityDecay={0.2} // More dynamic bounce settling
         />
       ) : (
         <div className="h-full w-full flex flex-col items-center justify-center text-gray-700 gap-4">
