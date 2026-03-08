@@ -1,574 +1,450 @@
 /**
  * RealTimeGraphPage.tsx
  *
- * Enhanced Real-Time Graph Update tool with unified parser support
- * and parser-only vs LLM-enhanced modes.
+ * Real-Time Dependency Graph with WebSocket Streaming
+ * Uses react-force-graph-2d for visualization and STOMP over WebSocket for live updates
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import cytoscape from 'cytoscape';
-import { useStore } from '@nanostores/react';
-import { graphCache, refreshGraph, graphCacheRepoUrl, graphCacheLoading } from '~/lib/stores/graphCacheStore';
-import { workbenchStore } from '~/lib/stores/workbench';
-import {
-  getUnifiedParser,
-  parseModeStore,
-  ParseModeSelector,
-  ParseModeStatus,
-  type ProjectAnalysis,
-  type LLMAnalysis,
-} from '~/lib/unifiedParser';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
+import { Client, StompConfig, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Activity, Clock, Play, Pause, History } from 'lucide-react';
+import { Activity, Pause, Play, Download, RefreshCw, Wifi, WifiOff, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface Props {
   onBack: () => void;
+  repoUrl?: string;
 }
 
-interface UpdateStats {
-  lastUpdated: Date;
-  changesDetected: number;
-  filesAnalyzed: number;
-  averageTime: number;
-  llmInsights?: string[];
-  nodesAdded: number;
-  edgesAdded: number;
-  nodesRemoved: number;
-  edgesRemoved: number;
+interface GraphNode extends NodeObject {
+  id: string;
+  label: string;
+  fileType: string;
+  dependencies: number;
+  dependents: number;
+  group: string;
+  size: number;
 }
 
-interface ChangeHistoryEntry {
-  timestamp: Date;
-  type: 'node_added' | 'node_removed' | 'edge_added' | 'edge_removed' | 'sync';
-  description: string;
+interface GraphLink extends LinkObject {
+  source: string | GraphNode;
+  target: string | GraphNode;
+  type: string;
+  weight: number;
 }
 
-export function RealTimeGraphPage({ onBack }: Props) {
-  const cyRef = useRef<cytoscape.Core | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
 
-  const graphData = useStore(graphCache);
-  const repoUrl = useStore(graphCacheRepoUrl);
-  const isLoading = useStore(graphCacheLoading);
-  const parseMode = useStore(parseModeStore);
-  const files = useStore(workbenchStore.files);
+interface WebSocketMessage {
+  type: 'job_started' | 'node_added' | 'edge_added' | 'batch_update' | 'complete' | 'heartbeat' | 'error';
+  repoId: string;
+  nodes?: any[];
+  edges?: any[];
+  metadata?: {
+    totalNodes?: number;
+    totalEdges?: number;
+    processedFiles?: number;
+    status?: string;
+    message?: string;
+  };
+  timestamp: number;
+}
 
-  const [localGraphData, setLocalGraphData] = useState<typeof graphData>(null);
+interface UpdateBuffer {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
 
-  const [stats, setStats] = useState<UpdateStats>({
-    lastUpdated: new Date(),
-    changesDetected: 0,
-    filesAnalyzed: 0,
-    averageTime: 0,
-    nodesAdded: 0,
-    edgesAdded: 0,
-    nodesRemoved: 0,
-    edgesRemoved: 0,
+export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
+  const graphRef = useRef<ForceGraphMethods>();
+  const stompClientRef = useRef<Client | null>(null);
+  const updateBufferRef = useRef<UpdateBuffer>({ nodes: [], links: [] });
+  const mergeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // State
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [isConnected, setIsConnected] = useState(false);
+  const [lastHeartbeat, setLastHeartbeat] = useState<Date | null>(null);
+  const [physicsEnabled, setPhysicsEnabled] = useState(true);
+  const [stats, setStats] = useState({
+    totalNodes: 0,
+    totalEdges: 0,
+    processedFiles: 0,
+    status: 'idle' as 'idle' | 'connecting' | 'processing' | 'completed' | 'failed',
   });
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [repoId, setRepoId] = useState<string>('');
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [processedFiles] = useState<Set<string>>(new Set());
-  const [isPaused, setIsPaused] = useState(false);
-  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number>(0); // 0 = disabled
-  const [changeHistory, setChangeHistory] = useState<ChangeHistoryEntry[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const [modifiedNodes, setModifiedNodes] = useState<Set<string>>(new Set());
-  const [previousFileVersions, setPreviousFileVersions] = useState<Map<string, string>>(new Map());
-
-  // Initialize local graph data
+  // Extract repo ID from URL
   useEffect(() => {
-    if (graphData && !localGraphData) {
-      setLocalGraphData(JSON.parse(JSON.stringify(graphData)));
+    if (repoUrl) {
+      const extractedId = extractRepoId(repoUrl);
+      setRepoId(extractedId);
     }
-  }, [graphData]);
+  }, [repoUrl]);
 
-  // Auto-refresh interval
-  useEffect(() => {
-    if (autoRefreshInterval > 0 && !isPaused) {
-      const interval = setInterval(() => {
-        handleRefresh();
-      }, autoRefreshInterval * 1000);
-      return () => clearInterval(interval);
+  // Helper: Extract repo ID from URL
+  const extractRepoId = (url: string): string => {
+    const parts = url.replace(/\.git$/, '').split('/');
+    if (parts.length >= 2) {
+      return `${parts[parts.length - 2]}-${parts[parts.length - 1]}`;
     }
-  }, [autoRefreshInterval, isPaused]);
+    return url.replace(/[^a-zA-Z0-9-]/g, '-');
+  };
 
-  // Handle Real-Time Updates
-  useEffect(() => {
-    if (isPaused) return;
+  // WebSocket Connection with Exponential Backoff
+  const connectWebSocket = useCallback(() => {
+    if (!repoId) return;
 
-    const handleFileChange = async () => {
-      // Detect modified files by comparing content
-      const filesMap = workbenchStore.files.get();
-      const modifiedFiles: string[] = [];
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+    const wsUrl = backendUrl.replace(/^http/, 'ws').replace(/\/api$/, '');
 
-      Object.entries(filesMap).forEach(([path, dirent]) => {
-        if (dirent?.type === 'file') {
-          const fileNode = dirent as any;
-          const previousContent = previousFileVersions.get(path);
-          if (previousContent !== undefined && previousContent !== fileNode.content) {
-            modifiedFiles.push(path);
-          }
-          previousFileVersions.set(path, fileNode.content);
-        }
-      });
+    setStats((prev) => ({ ...prev, status: 'connecting' }));
 
-      if (modifiedFiles.length === 0) {
-        return;
-      }
+    const stompConfig: StompConfig = {
+      webSocketFactory: () => new SockJS(`${wsUrl}/ws-graph`) as any,
+      debug: (str) => console.log('[STOMP]', str),
+      reconnectDelay: Math.min(1000 * Math.pow(2, connectionAttempts), 30000),
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        console.log('[WebSocket] Connected successfully');
+        setIsConnected(true);
+        setConnectionAttempts(0);
+        setStats((prev) => ({ ...prev, status: 'processing' }));
 
-      const parser = await getUnifiedParser();
-      let changes = 0;
-      const startTime = Date.now();
-      let nodesAdded = 0;
-      let edgesAdded = 0;
+        // Subscribe to graph updates for this repo
+        stompClient.subscribe(`/topic/graph-updates/${repoId}`, handleGraphUpdate);
 
-      for (const filePath of modifiedFiles) {
-        const dirent = filesMap[filePath];
+        // Subscribe to heartbeat
+        stompClient.subscribe('/topic/graph-heartbeat', handleHeartbeat);
 
-        changes++;
+        // Send subscription confirmation
+        stompClient.publish({
+          destination: `/app/graph/subscribe/${repoId}`,
+          body: JSON.stringify({ repoId }),
+        });
 
-        // Track this node as modified for visual highlighting
-        setModifiedNodes((prev) => new Set([...prev, filePath]));
-
-        // Clear highlight after 3 seconds
-        setTimeout(() => {
-          setModifiedNodes((prev) => {
-            const next = new Set(prev);
-            next.delete(filePath);
-            return next;
-          });
-        }, 3000);
-
-        if (dirent?.type === 'file') {
-          try {
-            // Parse the changed file
-            const result = await parser.parseCode((dirent as any).content, filePath);
-
-            // Update graph edges based on new imports
-            if (localGraphData) {
-              const newEdges = [...localGraphData.edges];
-              const newNodes = [...localGraphData.nodes];
-
-              // Remove old edges from this source
-              const oldEdgeCount = newEdges.length;
-              const filteredEdges = newEdges.filter((e) => e.data.source !== filePath);
-              const edgesRemoved = oldEdgeCount - filteredEdges.length;
-
-              // Add new edges with tracking
-              const edgesBefore = filteredEdges.length;
-              result.metadata.imports.forEach((imp) => {
-                // Find target node (naive matching by filename)
-                const targetNode = newNodes.find((n) => n.data.filePath?.includes(imp.module));
-
-                if (targetNode) {
-                  filteredEdges.push({
-                    data: {
-                      id: `${filePath}-${targetNode.data.id}`,
-                      source: filePath,
-                      target: targetNode.data.id,
-                      type: 'import',
-                      cycle: false,
-                      label: 'imports',
-                      strength: 1,
-                      isNew: true, // Mark as new for visual highlight
-                    } as any,
-                  });
-                }
-              });
-
-              const newEdgesCount = filteredEdges.length - edgesBefore;
-              edgesAdded += newEdgesCount;
-
-              // Log change
-              if (newEdgesCount > 0 || edgesRemoved > 0) {
-                setChangeHistory((prev) =>
-                  [
-                    {
-                      timestamp: new Date(),
-                      type: (newEdgesCount > 0 ? 'edge_added' : 'edge_removed') as ChangeHistoryEntry['type'],
-                      description: `${filePath}: ${newEdgesCount} edges added, ${edgesRemoved} edges removed`,
-                    },
-                    ...prev,
-                  ].slice(0, 50),
-                ); // Keep last 50 changes
-              }
-
-              setLocalGraphData({
-                ...localGraphData,
-                edges: filteredEdges,
-              });
-
-              // Clear "new" flag after 3 seconds
-              setTimeout(() => {
-                setLocalGraphData((prev) =>
-                  prev
-                    ? {
-                      ...prev,
-                      edges: prev.edges.map((e) => ({
-                        ...e,
-                        data: { ...e.data, isNew: false },
-                      })),
-                    }
-                    : prev,
-                );
-              }, 3000);
-            }
-          } catch (e) {
-            console.error('Failed to parse changed file', e);
-          }
-        }
-      }
-
-      if (changes > 0) {
-        setStats((prev) => ({
-          ...prev,
-          lastUpdated: new Date(),
-          changesDetected: prev.changesDetected + changes,
-          filesAnalyzed: prev.filesAnalyzed + changes,
-          averageTime: (Date.now() - startTime) / changes,
-          edgesAdded: prev.edgesAdded + edgesAdded,
-          nodesAdded: prev.nodesAdded + nodesAdded,
-        }));
-
-        setChangeHistory((prev) =>
-          [
-            {
-              timestamp: new Date(),
-              type: 'sync' as ChangeHistoryEntry['type'],
-              description: `Detected ${changes} file changes`,
-            },
-            ...prev,
-          ].slice(0, 50),
-        );
-
-        if (parseMode.type === 'llm-enhanced') {
-          // Trigger AI analysis for impact
-          toast.info(`AI analyzing impact of ${changes} changed files...`);
-        }
-      }
+        toast.success('WebSocket connected - Live updates enabled');
+      },
+      onDisconnect: () => {
+        console.log('[WebSocket] Disconnected');
+        setIsConnected(false);
+        toast.warning('WebSocket disconnected - Attempting to reconnect...');
+      },
+      onStompError: (frame) => {
+        console.error('[STOMP Error]', frame);
+        setIsConnected(false);
+        setConnectionAttempts((prev) => prev + 1);
+        toast.error(`WebSocket error: ${frame.headers.message || 'Connection failed'}`);
+      },
     };
 
-    const timeoutId = setTimeout(handleFileChange, 2000);
+    const stompClient = new Client(stompConfig);
+    stompClientRef.current = stompClient;
+    stompClient.activate();
+  }, [repoId, connectionAttempts]);
 
-    return () => clearTimeout(timeoutId);
-  }, [files, parseMode, isPaused]); // Debounce on files change
+  // Handle incoming graph updates
+  const handleGraphUpdate = (message: IMessage) => {
+    try {
+      const update: WebSocketMessage = JSON.parse(message.body);
+      console.log('[Graph Update]', update.type, update);
 
-  useEffect(() => {
-    if (containerRef.current && localGraphData) {
-      const elements = [
-        ...localGraphData.nodes.map((n) => ({ data: n.data })),
-        ...localGraphData.edges.map((e) => ({ data: e.data })),
-      ];
+      switch (update.type) {
+        case 'job_started':
+          setStats((prev) => ({ ...prev, status: 'processing' }));
+          toast.info('Graph extraction started...');
+          break;
 
-      cyRef.current = cytoscape({
-        container: containerRef.current,
-        elements,
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': (ele: any) => (modifiedNodes.has(ele.id()) ? '#22c55e' : '#0ea5e9'), // green if modified
-              label: 'data(label)',
-              color: '#fff',
-              'text-valign': 'center',
-              'text-halign': 'right',
-              'font-size': '12px',
-              'transition-property': 'background-color',
-              'transition-duration': 500,
-            },
-          },
-          {
-            selector: 'edge',
-            style: {
-              width: (ele: any) => (ele.data('isNew') ? 3 : 2),
-              'line-color': (ele: any) => (ele.data('isNew') ? '#22c55e' : '#334155'), // green if new
-              'target-arrow-color': (ele: any) => (ele.data('isNew') ? '#22c55e' : '#334155'),
-              'target-arrow-shape': 'triangle',
-              'curve-style': 'bezier',
-              'transition-property': 'line-color, width',
-              'transition-duration': 500,
-            },
-          },
-          {
-            selector: 'node:selected',
-            style: {
-              'border-width': 2,
-              'border-color': '#f0f9ff',
-              'background-color': '#0284c7',
-            },
-          },
-        ],
-        layout: {
-          name: 'cose',
-          padding: 50,
-          nodeRepulsion: () => 4000,
-          animate: true,
-          animationDuration: 500,
-        },
-      });
+        case 'node_added':
+        case 'batch_update':
+          if (update.nodes) {
+            const newNodes: GraphNode[] = update.nodes.map((n) => ({
+              id: n.id,
+              label: n.label || n.id,
+              fileType: n.fileType || 'unknown',
+              dependencies: n.dependencies || 0,
+              dependents: n.dependents || 0,
+              group: n.group || 'default',
+              size: n.size || 5,
+            }));
+            updateBufferRef.current.nodes.push(...newNodes);
+          }
+          if (update.edges) {
+            const newLinks: GraphLink[] = update.edges.map((e) => ({
+              source: e.source,
+              target: e.target,
+              type: e.type || 'import',
+              weight: e.weight || 1,
+            }));
+            updateBufferRef.current.links.push(...newLinks);
+          }
+          break;
 
-      return () => {
-        if (cyRef.current) {
-          cyRef.current.destroy();
-          cyRef.current = null;
-        }
-      };
-    }
-  }, [localGraphData, modifiedNodes]);
+        case 'complete':
+          setStats({
+            totalNodes: update.metadata?.totalNodes || 0,
+            totalEdges: update.metadata?.totalEdges || 0,
+            processedFiles: update.metadata?.processedFiles || 0,
+            status: 'completed',
+          });
+          toast.success('Graph extraction completed!');
+          break;
 
-  const handleRefresh = async () => {
-    if (repoUrl && !isLoading) {
-      setIsAnalyzing(true);
-
-      try {
-        const unifiedParser = await getUnifiedParser();
-
-        // Force sync with backend
-        const currentUrl = repoUrl;
-        graphCacheRepoUrl.set(null);
-        await refreshGraph(currentUrl);
-
-        // If LLM mode is enabled, perform additional analysis
-        if (parseMode.type === 'llm-enhanced' && graphData) {
-          const files = graphData.nodes.slice(0, 5).map((node) => ({
-            path: node.data.filePath || 'unknown',
-            content: `// Simulated content for ${node.data.label}\n// Monitoring for changes...`,
-          }));
-
-          const analysis = await unifiedParser.parseProject(files);
-
-          setStats((prev) => ({
-            ...prev,
-            llmInsights: analysis.llmAnalysis?.recommendations || [],
-            averageTime:
-              analysis.files.reduce((sum: number, f: any) => sum + (f.analysisTime || 0), 0) / analysis.files.length,
-          }));
-        }
-
-        toast.success('Real-time sync completed');
-      } catch (error) {
-        console.error('Sync failed:', error);
-        toast.error('Sync failed: ' + (error as Error).message);
-      } finally {
-        setIsAnalyzing(false);
+        case 'error':
+          setStats((prev) => ({ ...prev, status: 'failed' }));
+          toast.error(`Error: ${update.metadata?.message || 'Unknown error'}`);
+          break;
       }
+    } catch (error) {
+      console.error('[handleGraphUpdate] Parse error:', error);
     }
   };
 
-  if (!graphData) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-12">
-        <div className="text-6xl mb-6">🔄</div>
-        <h2 className="text-2xl font-bold text-white mb-3">Loading Real-Time Monitor...</h2>
-        <p className="text-gray-400 max-w-md">Establishing connection to codebase monitoring service.</p>
-      </div>
-    );
-  }
+  // Handle heartbeat messages
+  const handleHeartbeat = (message: IMessage) => {
+    setLastHeartbeat(new Date());
+  };
 
-  if (graphData.nodes.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-12">
-        <div className="text-6xl mb-6">🔄</div>
-        <h2 className="text-2xl font-bold text-white mb-3">No Graph Data Yet</h2>
-        <p className="text-gray-400 max-w-md mb-6">
-          Real-time monitoring requires a SCIP index to be uploaded for this repository. Once indexed, changes will be
-          tracked and visualized here automatically.
-        </p>
-      </div>
-    );
-  }
+  // Merge buffered updates periodically (100ms interval)
+  useEffect(() => {
+    mergeIntervalRef.current = setInterval(() => {
+      const buffer = updateBufferRef.current;
+
+      if (buffer.nodes.length > 0 || buffer.links.length > 0) {
+        setGraphData((prevData) => {
+          // Merge nodes
+          const nodeMap = new Map(prevData.nodes.map((n) => [n.id, n]));
+          buffer.nodes.forEach((n) => nodeMap.set(n.id, n));
+          const mergedNodes = Array.from(nodeMap.values());
+
+          // Merge links
+          const linkSet = new Set(prevData.links.map((l) => `${l.source}-${l.target}`));
+          const newLinks = buffer.links.filter((l) => {
+            const key = `${l.source}-${l.target}`;
+            if (!linkSet.has(key)) {
+              linkSet.add(key);
+              return true;
+            }
+            return false;
+          });
+
+          // Clear buffer
+          updateBufferRef.current = { nodes: [], links: [] };
+
+          return {
+            nodes: mergedNodes,
+            links: [...prevData.links, ...newLinks],
+          };
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          totalNodes: nodeMap.size,
+          totalEdges: prev.totalEdges + buffer.links.length,
+        }));
+      }
+    }, 100);
+
+    return () => {
+      if (mergeIntervalRef.current) {
+        clearInterval(mergeIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Connect on mount
+  useEffect(() => {
+    if (repoId) {
+      connectWebSocket();
+    }
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+      }
+      if (mergeIntervalRef.current) {
+        clearInterval(mergeIntervalRef.current);
+      }
+    };
+  }, [repoId, connectWebSocket]);
+
+  // Custom node rendering with file type icons
+  const drawNode = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    const label = node.label || node.id;
+    const fontSize = 12 / globalScale;
+    const nodeSize = node.size || 5;
+
+    // Draw node circle with color based on file type
+    const color = getFileTypeColor(node.fileType);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(node.x!, node.y!, nodeSize, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Draw label
+    ctx.font = `${fontSize}px Sans-Serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, node.x!, node.y! + nodeSize + fontSize);
+  }, []);
+
+  // Get color based on file type
+  const getFileTypeColor = (fileType: string): string => {
+    const colorMap: Record<string, string> = {
+      tsx: '#61DAFB',
+      ts: '#3178C6',
+      jsx: '#F7DF1E',
+      js: '#F7DF1E',
+      java: '#007396',
+      py: '#3776AB',
+      go: '#00ADD8',
+      rs: '#CE422B',
+      cpp: '#00599C',
+      cs: '#239120',
+      default: '#888888',
+    };
+    return colorMap[fileType] || colorMap.default;
+  };
+
+  // Export graph data
+  const handleExport = () => {
+    const dataStr = JSON.stringify(graphData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `graph-${repoId}-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Graph data exported');
+  };
+
+  // Zoom controls
+  const handleZoomIn = () => {
+    if (graphRef.current) {
+      graphRef.current.zoom(1.5, 400);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (graphRef.current) {
+      graphRef.current.zoom(0.75, 400);
+    }
+  };
+
+  const handleFitView = () => {
+    if (graphRef.current) {
+      graphRef.current.zoomToFit(400);
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-depth-1">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="flex items-center justify-between p-4 border-b border-borderColor">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button onClick={onBack} variant="ghost" size="sm">
             ← Back
           </Button>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span className={isLoading || isAnalyzing ? 'animate-spin' : ''}>🔄</span> Real-Time Graph Update
-          </h2>
-          <ParseModeStatus />
+          <h2 className="text-xl font-semibold text-primary">Real-Time Dependency Graph</h2>
         </div>
 
+        {/* Connection Status */}
         <div className="flex items-center gap-2">
-          <Button
-            variant={isPaused ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setIsPaused(!isPaused)}
-            title={isPaused ? 'Resume monitoring' : 'Pause monitoring'}
-          >
-            {isPaused ? <Play className="h-3 w-3 mr-1" /> : <Pause className="h-3 w-3 mr-1" />}
-            {isPaused ? 'Resume' : 'Pause'}
-          </Button>
-          <select
-            value={autoRefreshInterval}
-            onChange={(e) => setAutoRefreshInterval(Number(e.target.value))}
-            className="px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-          >
-            <option value={0}>Manual Refresh</option>
-            <option value={5}>Auto 5s</option>
-            <option value={10}>Auto 10s</option>
-            <option value={30}>Auto 30s</option>
-            <option value={60}>Auto 1m</option>
-          </select>
-          <ParseModeSelector compact />
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading || isAnalyzing || isPaused}>
-            {isLoading || isAnalyzing ? (
-              <>
-                <RefreshCw className="h-3 w-3 animate-spin mr-1" />
-                Syncing...
-              </>
-            ) : (
-              <>
-                <Zap className="h-3 w-3 mr-1" />
-                Force Sync Now
-              </>
-            )}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
-            <History className="h-3 w-3 mr-1" />
-            History
-          </Button>
+          {isConnected ? (
+            <Badge variant="success" className="flex items-center gap-1">
+              <Wifi className="w-3 h-3" />
+              Live Sync
+            </Badge>
+          ) : (
+            <Badge variant="danger" className="flex items-center gap-1">
+              <WifiOff className="w-3 h-3" />
+              Disconnected
+            </Badge>
+          )}
+          {lastHeartbeat && (
+            <span className="text-sm text-secondary">Last heartbeat: {lastHeartbeat.toLocaleTimeString()}</span>
+          )}
         </div>
       </div>
 
-      {/* Monitor Stats */}
-      <Card className="mb-4 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Clock className="h-4 w-4 text-blue-400" />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Last Sync</div>
-              <div className="text-sm font-bold">{stats.lastUpdated.toLocaleTimeString()}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Activity className="h-4 w-4 text-green-400" />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Changes Detected</div>
-              <div className="text-sm font-bold">{stats.changesDetected}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <RefreshCw className="h-4 w-4 text-purple-400" />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Nodes Monitored</div>
-              <div className="text-sm font-bold">{stats.filesAnalyzed}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/10 rounded-lg">
-              <Zap className="h-4 w-4 text-orange-400" />
-            </div>
-            <div>
-              <div className="text-xs text-gray-400">Avg Parse Time</div>
-              <div className="text-sm font-bold">{stats.averageTime.toFixed(1)}ms</div>
-            </div>
-          </div>
+      {/* Stats Bar */}
+      <div className="flex items-center gap-4 p-3 bg-depth-2 border-b border-borderColor">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-accent" />
+          <span className="text-sm font-medium">Status:</span>
+          <Badge variant={stats.status === 'completed' ? 'success' : 'default'}>{stats.status}</Badge>
         </div>
-
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          <div className="flex justify-between px-2 py-1 bg-gray-800/50 rounded">
-            <span className="text-gray-400">Nodes Added:</span>
-            <span className="text-green-400 font-semibold">{stats.nodesAdded}</span>
-          </div>
-          <div className="flex justify-between px-2 py-1 bg-gray-800/50 rounded">
-            <span className="text-gray-400">Edges Added:</span>
-            <span className="text-green-400 font-semibold">{stats.edgesAdded}</span>
-          </div>
-          <div className="flex justify-between px-2 py-1 bg-gray-800/50 rounded">
-            <span className="text-gray-400">Nodes Removed:</span>
-            <span className="text-red-400 font-semibold">{stats.nodesRemoved}</span>
-          </div>
-          <div className="flex justify-between px-2 py-1 bg-gray-800/50 rounded">
-            <span className="text-gray-400">Edges Removed:</span>
-            <span className="text-red-400 font-semibold">{stats.edgesRemoved}</span>
-          </div>
+        <div className="text-sm text-secondary">
+          Nodes: <span className="font-semibold text-primary">{stats.totalNodes}</span>
         </div>
-
-        {stats.llmInsights && stats.llmInsights.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <h4 className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
-              <Brain className="h-3 w-3" />
-              Real-time AI Insights
-            </h4>
-            <div className="space-y-1">
-              {stats.llmInsights.map((insight, idx) => (
-                <div key={idx} className="text-sm text-gray-300 flex items-start gap-2">
-                  <div className="mt-1.5 w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
-                  {insight}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Change History Panel */}
-      {showHistory && (
-        <Card className="mb-4 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Change History ({changeHistory.length})
-            </h4>
-            <Button variant="ghost" size="sm" onClick={() => setChangeHistory([])}>
-              Clear
-            </Button>
-          </div>
-          <div className="max-h-48 overflow-y-auto space-y-2">
-            {changeHistory.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">No changes detected yet</p>
-            ) : (
-              changeHistory.map((entry, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-xs bg-gray-800/50 p-2 rounded">
-                  <div className="mt-0.5">
-                    {entry.type === 'node_added' && <span className="text-green-400">+N</span>}
-                    {entry.type === 'edge_added' && <span className="text-green-400">+E</span>}
-                    {entry.type === 'node_removed' && <span className="text-red-400">-N</span>}
-                    {entry.type === 'edge_removed' && <span className="text-red-400">-E</span>}
-                    {entry.type === 'sync' && <span className="text-blue-400">📡</span>}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-gray-300">{entry.description}</div>
-                    <div className="text-gray-500 text-[10px] mt-0.5">{entry.timestamp.toLocaleTimeString()}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Monitor Visualization */}
-      <div className="flex-1 min-h-[500px] border border-gray-700 rounded-xl bg-gray-900 overflow-hidden relative">
-        <div className="absolute top-4 left-4 z-10 bg-gray-900/80 p-3 rounded-lg border border-gray-700 backdrop-blur">
-          <p className="text-xs text-gray-300 flex items-center gap-2">
-            {isPaused ? (
-              <>
-                <Pause className="h-3 w-3 text-orange-400" />
-                Monitoring paused - Click Resume to continue tracking changes
-              </>
-            ) : (
-              <>
-                <Activity className="h-3 w-3 text-green-400 animate-pulse" />
-                Live monitoring - Green highlights show recent changes
-              </>
-            )}
-          </p>
+        <div className="text-sm text-secondary">
+          Edges: <span className="font-semibold text-primary">{stats.totalEdges}</span>
         </div>
-        <div ref={containerRef} className="w-full h-full" />
+        <div className="text-sm text-secondary">
+          Files: <span className="font-semibold text-primary">{stats.processedFiles}</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2 p-3 bg-depth-2 border-b border-borderColor">
+        <Button
+          onClick={() => setPhysicsEnabled(!physicsEnabled)}
+          variant="secondary"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          {physicsEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          {physicsEnabled ? 'Freeze Physics' : 'Enable Physics'}
+        </Button>
+        <Button onClick={handleZoomIn} variant="secondary" size="sm">
+          <ZoomIn className="w-4 h-4" />
+        </Button>
+        <Button onClick={handleZoomOut} variant="secondary" size="sm">
+          <ZoomOut className="w-4 h-4" />
+        </Button>
+        <Button onClick={handleFitView} variant="secondary" size="sm">
+          Fit View
+        </Button>
+        <Button onClick={handleExport} variant="secondary" size="sm" className="flex items-center gap-2">
+          <Download className="w-4 h-4" />
+          Export
+        </Button>
+        <Button onClick={connectWebSocket} variant="secondary" size="sm" className="flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Reconnect
+        </Button>
+      </div>
+
+      {/* Graph Canvas */}
+      <div className="flex-1 relative">
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          nodeLabel={(node: any) => `${node.label || node.id}\n${node.fileType}`}
+          nodeCanvasObject={drawNode}
+          linkColor={() => 'rgba(255, 255, 255, 0.2)'}
+          linkWidth={(link: any) => link.weight || 1}
+          linkDirectionalArrowLength={3}
+          linkDirectionalArrowRelPos={1}
+          enableNodeDrag={true}
+          cooldownTicks={physicsEnabled ? Infinity : 0}
+          onNodeClick={(node: any) => {
+            console.log('[Node Clicked]', node);
+            toast.info(`${node.label || node.id} (${node.fileType})`);
+          }}
+          backgroundColor="#000000"
+        />
       </div>
     </div>
   );
