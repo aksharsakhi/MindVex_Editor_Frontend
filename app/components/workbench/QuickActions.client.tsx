@@ -20,6 +20,7 @@ import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { EvolutionaryBlame } from './EvolutionaryBlame';
 import { IntelligentChat } from './IntelligentChat';
 import { LivingWiki } from './LivingWiki';
+import { CodeHealthHeatmap } from './CodeHealthHeatmap';
 
 interface QuickActionItem {
   id: string;
@@ -93,6 +94,13 @@ const quickActions: QuickActionItem[] = [
     icon: '📚',
     color: 'green',
   },
+  {
+    id: 'code-health-heatmap',
+    title: 'Security & Coverage Heatmap',
+    description: 'Live diagnostic of simulated test coverage and security vulnerabilities',
+    icon: '🛡️',
+    color: 'emerald',
+  },
 ];
 
 export function QuickActions() {
@@ -165,6 +173,8 @@ export function QuickActions() {
         return <IntelligentChat />;
       case 'living-wiki':
         return <LivingWiki />;
+      case 'code-health-heatmap':
+        return <CodeHealthHeatmap />;
       default:
         return null;
     }
