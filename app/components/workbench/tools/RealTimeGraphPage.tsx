@@ -111,7 +111,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
     const wsUrl = backendUrl.replace(/^http/, 'ws').replace(/\/api$/, '');
-    
+
     console.log('[WebSocket] Connecting to:', `${wsUrl}/ws-graph`, 'for repo:', repoId);
 
     setStats((prev) => ({ ...prev, status: 'connecting' }));
