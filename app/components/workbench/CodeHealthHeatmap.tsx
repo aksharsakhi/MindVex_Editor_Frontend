@@ -577,7 +577,7 @@ ${fileContent}`;
             const fileSha = fileData.sha;
 
             // 5. Update file
-            await fetch(`${proxyBase}/contents/${file}`, {
+            const uploadRes = await fetch(`${proxyBase}/contents/${file}`, {
                 method: 'PUT',
                 headers: getJsonHeader(),
                 body: JSON.stringify({
@@ -587,6 +587,8 @@ ${fileContent}`;
                     branch: newBranch
                 })
             });
+
+            if (!uploadRes.ok) throw new Error("Failed to upload file fix to GitHub.");
 
             // 6. Create PR
             const prRes = await fetch(`${proxyBase}/pulls`, {
@@ -599,6 +601,7 @@ ${fileContent}`;
                     base: defaultBranch
                 })
             });
+            if (!prRes.ok) throw new Error("Failed to create PR: " + await prRes.text());
             const prData: any = await prRes.json();
 
             if (prData.html_url) {
