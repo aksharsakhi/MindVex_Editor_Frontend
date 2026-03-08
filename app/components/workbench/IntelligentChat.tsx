@@ -9,7 +9,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
 import { mcpChat, mcpGetWiki, mcpDescribeModule, mcpSemanticSearch, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { providersStore } from '~/lib/stores/settings';
+import { providersStore, activeProviderStore } from '~/lib/stores/settings';
 import {
   getUnifiedParser,
   parseModeStore,
@@ -36,9 +36,9 @@ export function IntelligentChat() {
   const [loading, setLoading] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const parseMode = useStore(parseModeStore);
-
+  const selectedProviderName = useStore(activeProviderStore);
+  const providers = useStore(providersStore);
   useEffect(() => {
     const recent = repositoryHistoryStore.getRecentRepositories(1);
 
@@ -50,8 +50,6 @@ export function IntelligentChat() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
-
-  const providers = useStore(providersStore);
 
   const handleSend = async () => {
     if (!input.trim() || !repoUrl) {
@@ -69,8 +67,7 @@ export function IntelligentChat() {
 
       // ─── Provider & Model Selection ─────────────────────────────────────────────
 
-      const enabledProviders = Object.values(providers).filter((p) => p.settings.enabled);
-      const activeProvider = enabledProviders[0] || null;
+      const activeProvider = selectedProviderName ? providers[selectedProviderName] : Object.values(providers).find(p => p.settings.enabled) || null;
 
       // Handle Parser-Only Mode (Keyword Search)
       if (parseMode.type === 'parser-only') {
@@ -225,8 +222,8 @@ export function IntelligentChat() {
             <div className={`max-w-[85%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div
                 className={`rounded-2xl px-5 py-3 text-sm leading-relaxed ${msg.role === 'user'
-                    ? 'bg-orange-500/10 border border-orange-500/20 text-gray-200'
-                    : 'bg-[#111] border border-white/5 text-gray-300'
+                  ? 'bg-orange-500/10 border border-orange-500/20 text-gray-200'
+                  : 'bg-[#111] border border-white/5 text-gray-300'
                   }`}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>

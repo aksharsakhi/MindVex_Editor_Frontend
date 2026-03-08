@@ -174,6 +174,8 @@ export async function mcpChat(
   });
 
   if (!res.ok) {
+    const errorBody = await res.text().catch(() => "No error details");
+    console.error(`[MCP Chat Error] ${res.status}: ${errorBody}`);
     throw new Error(`MCP chat failed: ${res.status}`);
   }
 

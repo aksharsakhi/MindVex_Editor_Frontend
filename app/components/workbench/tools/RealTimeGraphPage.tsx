@@ -8,9 +8,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
 import ForceGraph2D from 'react-force-graph-2d';
-import { Client } from '@stomp/stompjs';
-import type { StompConfig, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+// WebSocket libraries will be imported dynamically to prevent SSR/Hydration issues
+import type { Client, StompConfig, IMessage } from '@stomp/stompjs';
+import type SockJS from 'sockjs-client';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
@@ -105,11 +105,17 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
   };
 
   // WebSocket Connection with Exponential Backoff
-  const connectWebSocket = useCallback(() => {
+  const connectWebSocket = useCallback(async () => {
     if (!repoId) {
       console.warn('[WebSocket] Cannot connect - no repoId');
       return;
     }
+
+    // Dynamic imports for browser-only WebSocket libraries
+    const [{ Client }, { default: SockJS }] = await Promise.all([
+      import('@stomp/stompjs'),
+      import('sockjs-client'),
+    ]);
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
     const wsUrl = backendUrl.replace(/^http/, 'ws').replace(/\/api$/, '');
@@ -130,17 +136,14 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
         connectionAttemptsRef.current = 0;
         setStats((prev) => ({ ...prev, status: 'processing' }));
 
-        // Subscribe to graph updates for this repo
-        stompClient.subscribe(`/topic/graph-updates/${repoId}`, handleGraphUpdate);
-
-        // Subscribe to heartbeat
-        stompClient.subscribe('/topic/graph-heartbeat', handleHeartbeat);
-
-        // Send subscription confirmation
-        stompClient.publish({
-          destination: `/app/graph/subscribe/${repoId}`,
-          body: JSON.stringify({ repoId }),
-        });
+        if (stompClientRef.current) {
+          stompClientRef.current.subscribe(`/topic/graph-updates/${repoId}`, handleGraphUpdate);
+          stompClientRef.current.subscribe('/topic/graph-heartbeat', handleHeartbeat);
+          stompClientRef.current.publish({
+            destination: `/app/graph/subscribe/${repoId}`,
+            body: JSON.stringify({ repoId }),
+          });
+        }
 
         toast.success('WebSocket connected - Live updates enabled');
       },

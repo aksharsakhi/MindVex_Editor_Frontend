@@ -2,14 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '@nanostores/react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { providersStore } from '~/lib/stores/settings';
+import { providersStore, activeProviderStore, setActiveProvider, updateProviderSettings } from '~/lib/stores/settings';
 import { mcpChat } from '~/lib/mcp/mcpClient';
+import { Dropdown, DropdownItem } from '~/components/ui/Dropdown';
+import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
 import {
     ShieldAlert, Activity, FileCode, FileText, FileJson, Search, ArrowUpDown,
     RefreshCw, Bug, ShieldCheck, Zap, AlertOctagon, AlertTriangle, Info,
-    TrendingUp, TrendingDown, Eye, Filter, Lock, Unlock, Code2, Database, TerminalSquare
+    TrendingUp, TrendingDown, Eye, Filter, Lock, Unlock, Code2, Database, TerminalSquare,
+    ChevronDown, Sparkles
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -498,6 +501,26 @@ function AIFixButton({ file, vuln, repoUrl }: { file: string; vuln: any; repoUrl
     const [prUrl, setPrUrl] = useState('');
     const filesMap = useStore(workbenchStore.files);
     const providers = useStore(providersStore);
+    const selectedProviderName = useStore(activeProviderStore);
+
+    const enabledProviders = useMemo(() => {
+        return Object.values(providers).filter((p) => p.settings.enabled);
+    }, [providers]);
+
+    const activeProvider = useMemo(() => {
+        return enabledProviders.find((p) => p.name === selectedProviderName) || enabledProviders[0] || null;
+    }, [enabledProviders, selectedProviderName]);
+
+    const activeModel = useMemo(() => {
+        if (!activeProvider) return null;
+        return activeProvider.settings.selectedModel || (activeProvider.staticModels && activeProvider.staticModels[0]?.name);
+    }, [activeProvider]);
+
+    useEffect(() => {
+        if (!selectedProviderName && enabledProviders.length > 0) {
+            setActiveProvider(enabledProviders[0].name);
+        }
+    }, [enabledProviders, selectedProviderName]);
 
     const handleFix = async () => {
         if (isDone) return;
@@ -510,10 +533,13 @@ function AIFixButton({ file, vuln, repoUrl }: { file: string; vuln: any; repoUrl
             if (!repoUrl) throw new Error("No repository active.");
 
             let providerInfo;
-            const providerValues = Object.values(providers);
-            if (providerValues.length > 0) {
-                const firstProvider = providerValues[0];
-                providerInfo = { name: firstProvider.name, apiKey: firstProvider.settings?.apiKey };
+            if (activeProvider) {
+                providerInfo = {
+                    name: activeProvider.name,
+                    model: activeModel || undefined,
+                    apiKey: activeProvider.settings.apiKey,
+                    baseUrl: activeProvider.settings.baseUrl
+                };
             }
 
             toast.info("AI generating secure code remediation...");
@@ -540,7 +566,9 @@ ${fileContent}`;
             if (path.endsWith('.git')) path = path.substring(0, path.length - 4);
 
             const ownerRepo = path;
-            const proxyBase = `${import.meta.env.VITE_API_URL ?? 'http://localhost:8080'}/api/git-proxy/api.github.com/repos/${ownerRepo}`;
+
+            // Use relative path to take advantage of Vite's proxy and avoid CORS issues on localhost
+            const proxyBase = `/api/git-proxy/api.github.com/repos/${ownerRepo}`;
 
             const getAuthHeader = (): Record<string, string> => {
                 const token = localStorage.getItem('auth_token');
@@ -553,25 +581,28 @@ ${fileContent}`;
 
             // 1. Get default branch
             const repoRes = await fetch(proxyBase, { headers: getAuthHeader() });
-            if (!repoRes.ok) throw new Error("Failed connecting to valid GitHub repo. Is it set up correctly?");
+            if (!repoRes.ok) throw repoRes;
             const repoData: any = await repoRes.json();
             const defaultBranch = repoData.default_branch || 'main';
 
             // 2. Get default branch SHA
             const refRes = await fetch(`${proxyBase}/git/refs/heads/${defaultBranch}`, { headers: getAuthHeader() });
+            if (!refRes.ok) throw refRes;
             const refData: any = await refRes.json();
             const baseSha = refData.object.sha;
 
             // 3. Create new branch
             const newBranch = `code-nexus-security-${vuln.id.toLowerCase()}-${Date.now()}`;
-            await fetch(`${proxyBase}/git/refs`, {
+            const createBranchRes = await fetch(`${proxyBase}/git/refs`, {
                 method: 'POST',
                 headers: getJsonHeader(),
                 body: JSON.stringify({ ref: `refs/heads/${newBranch}`, sha: baseSha })
             });
+            if (!createBranchRes.ok) throw createBranchRes;
 
             // 4. Get current file SHA
             const fileRes = await fetch(`${proxyBase}/contents/${file}?ref=${defaultBranch}`, { headers: getAuthHeader() });
+            if (!fileRes.ok) throw fileRes;
             const fileData: any = await fileRes.json();
             if (!fileData || !fileData.sha) throw new Error("Could not find file on GitHub remote.");
             const fileSha = fileData.sha;
@@ -588,7 +619,7 @@ ${fileContent}`;
                 })
             });
 
-            if (!uploadRes.ok) throw new Error("Failed to upload file fix to GitHub.");
+            if (!uploadRes.ok) throw uploadRes;
 
             // 6. Create PR
             const prRes = await fetch(`${proxyBase}/pulls`, {
@@ -601,7 +632,7 @@ ${fileContent}`;
                     base: defaultBranch
                 })
             });
-            if (!prRes.ok) throw new Error("Failed to create PR: " + await prRes.text());
+            if (!prRes.ok) throw prRes;
             const prData: any = await prRes.json();
 
             if (prData.html_url) {
@@ -613,8 +644,19 @@ ${fileContent}`;
             }
 
         } catch (e: any) {
-            console.error(e);
-            toast.error("GitHub Generation Failed: " + e.message);
+            console.error('[GitHub Fix Injection Error]', e);
+
+            let errorMessage = e.message;
+            if (e instanceof Response) {
+                try {
+                    const body = await e.text();
+                    errorMessage = `HTTP ${e.status}: ${body || e.statusText}`;
+                } catch {
+                    errorMessage = `HTTP ${e.status}: ${e.statusText}`;
+                }
+            }
+
+            toast.error("GitHub Generation Failed: " + errorMessage);
         } finally {
             setIsGenerating(false);
         }
@@ -641,21 +683,78 @@ ${fileContent}`;
                 handleFix();
             }}
             disabled={isGenerating}
-            className={`mt-4 px-4 py-2 w-full rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2
+            className={`mt-4 px-4 py-2 w-full rounded-lg text-xs font-bold transition-all flex flex-col items-center justify-center gap-3
           ${isGenerating
                     ? 'bg-purple-600/10 text-purple-400/50 border border-purple-500/10 cursor-wait'
-                    : 'bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                    : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]'
                 }`}
         >
-            {isGenerating ? (
-                <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Synthesizing AI Patch...
-                </>
-            ) : (
-                <>
-                    <Zap className="h-3.5 w-3.5" /> Initialize Git Fix Injection
-                </>
+            {!isGenerating && (
+                <div className="w-full flex items-center justify-between gap-2 mb-1 p-2 bg-black/20 rounded-md border border-white/5">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                        <Dropdown
+                            trigger={
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-1.5 text-[10px] gap-1 border border-white/10 bg-[#111] hover:bg-[#181818]"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <span className="truncate max-w-[60px]">{activeProvider?.name || 'AI'}</span>
+                                    <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                </Button>
+                            }
+                        >
+                            {enabledProviders.map((p) => (
+                                <DropdownItem key={p.name} onSelect={() => setActiveProvider(p.name)}>
+                                    {p.name}
+                                </DropdownItem>
+                            ))}
+                        </Dropdown>
+
+                        {activeProvider && activeProvider.staticModels.length > 0 && (
+                            <Dropdown
+                                trigger={
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 px-1.5 text-[10px] gap-1 border border-white/10 bg-[#111] hover:bg-[#181818]"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <span className="truncate max-w-[80px]">{activeModel || 'Model'}</span>
+                                        <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                                    </Button>
+                                }
+                            >
+                                {activeProvider.staticModels.map((m) => (
+                                    <DropdownItem
+                                        key={m.name}
+                                        onSelect={() => updateProviderSettings(activeProvider.name, { selectedModel: m.name })}
+                                        className={activeModel === m.name ? 'bg-emerald-500/10' : ''}
+                                    >
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[10px]">{m.label}</span>
+                                        </div>
+                                    </DropdownItem>
+                                ))}
+                            </Dropdown>
+                        )}
+                    </div>
+                    <Sparkles className="h-3 w-3 text-emerald-400 opacity-50 flex-shrink-0" />
+                </div>
             )}
+
+            <div className="flex items-center justify-center gap-2 w-full py-1">
+                {isGenerating ? (
+                    <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Synthesizing AI Patch...
+                    </>
+                ) : (
+                    <>
+                        <Zap className="h-3.5 w-3.5" /> Initialize Git Fix Injection
+                    </>
+                )}
+            </div>
         </button>
     );
 }

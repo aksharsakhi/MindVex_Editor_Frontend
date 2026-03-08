@@ -131,7 +131,15 @@ const autoEnableConfiguredProviders = async () => {
     const autoEnabledProviders = localStorage.getItem(AUTO_ENABLED_KEY);
 
     // Track which providers were auto-enabled to avoid overriding user preferences
-    const previouslyAutoEnabled = autoEnabledProviders ? JSON.parse(autoEnabledProviders) : [];
+    let previouslyAutoEnabled: string[] = [];
+    try {
+      previouslyAutoEnabled = autoEnabledProviders ? JSON.parse(autoEnabledProviders) : [];
+      if (!Array.isArray(previouslyAutoEnabled)) previouslyAutoEnabled = [];
+    } catch (e) {
+      console.warn('Failed to parse auto-enabled providers from localStorage', e);
+      previouslyAutoEnabled = [];
+    }
+
     const newlyAutoEnabled: string[] = [];
 
     let hasChanges = false;
@@ -248,6 +256,22 @@ const updateAutoEnabledTracking = (providerName: string, isEnabled: boolean) => 
   }
 };
 
+// Global store for the currently selected/active provider name
+const INITIAL_ACTIVE_PROVIDER = isBrowser ? localStorage.getItem('active_provider') : null;
+export const activeProviderStore = atom<string | null>(INITIAL_ACTIVE_PROVIDER);
+
+// Update helper for active provider
+export const setActiveProvider = (name: string | null) => {
+  activeProviderStore.set(name);
+  if (isBrowser) {
+    if (name) {
+      localStorage.setItem('active_provider', name);
+    } else {
+      localStorage.removeItem('active_provider');
+    }
+  }
+};
+
 export const isDebugMode = atom(false);
 
 // Define keys for localStorage
@@ -344,13 +368,13 @@ const getInitialTabConfiguration = (): TabWindowConfig => {
 
     const parsed = JSON.parse(saved);
 
-    if (!parsed?.userTabs) {
+    if (!parsed || !Array.isArray(parsed.userTabs)) {
       return defaultConfig;
     }
 
     // Ensure proper typing of loaded configuration
     return {
-      userTabs: parsed.userTabs.filter((tab: TabVisibilityConfig): tab is UserTabConfig => tab.window === 'user'),
+      userTabs: parsed.userTabs.filter((tab: any): tab is UserTabConfig => tab && tab.window === 'user'),
     };
   } catch (error) {
     console.warn('Failed to parse tab configuration:', error);

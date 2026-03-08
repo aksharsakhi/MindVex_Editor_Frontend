@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { mcpChat, mcpGetWiki, mcpDescribeModule, type ChatHistoryItem } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
-import { providersStore, updateProviderSettings } from '~/lib/stores/settings';
+import { providersStore, updateProviderSettings, activeProviderStore, setActiveProvider } from '~/lib/stores/settings';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { useStore } from '@nanostores/react';
 import { Dropdown, DropdownItem } from '~/components/ui/Dropdown';
@@ -27,8 +27,7 @@ export function ChatPanel() {
   const [repoUrl, setRepoUrl] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const providers = useStore(providersStore);
-
-  const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
+  const selectedProviderName = useStore(activeProviderStore);
 
   const enabledProviders = useMemo(() => {
     return Object.values(providers).filter((p) => p.settings.enabled);
@@ -37,13 +36,13 @@ export function ChatPanel() {
   // Set default provider if none selected
   useEffect(() => {
     if (!selectedProviderName && enabledProviders.length > 0) {
-      setSelectedProviderName(enabledProviders[0].name);
+      setActiveProvider(enabledProviders[0].name);
     } else if (selectedProviderName && !enabledProviders.find((p) => p.name === selectedProviderName)) {
       // If selected provider is disabled, switch to another
       if (enabledProviders.length > 0) {
-        setSelectedProviderName(enabledProviders[0].name);
+        setActiveProvider(enabledProviders[0].name);
       } else {
-        setSelectedProviderName(null);
+        setActiveProvider(null);
       }
     }
   }, [enabledProviders, selectedProviderName]);
@@ -168,7 +167,7 @@ export function ChatPanel() {
             }
           >
             {enabledProviders.map((p) => (
-              <DropdownItem key={p.name} onSelect={() => setSelectedProviderName(p.name)}>
+              <DropdownItem key={p.name} onSelect={() => setActiveProvider(p.name)}>
                 {p.name}
               </DropdownItem>
             ))}
