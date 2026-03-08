@@ -160,7 +160,7 @@ export function QuickActions() {
       case 'architecture-graph':
         return <ArchitecturePage onBack={handleBackToMenu} />;
       case 'realtime-graph':
-        return <RealTimeGraphPage onBack={handleBackToMenu} />;
+        return <RealTimeGraphPage onBack={handleBackToMenu} repoUrl={repoUrl} />;
       case 'impact-analysis':
         return <ImpactAnalysisPage onBack={handleBackToMenu} />;
       case 'cycle-detection':

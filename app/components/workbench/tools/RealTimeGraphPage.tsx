@@ -79,14 +79,17 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
     processedFiles: 0,
     status: 'idle' as 'idle' | 'connecting' | 'processing' | 'completed' | 'failed',
   });
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const connectionAttemptsRef = useRef(0);
   const [repoId, setRepoId] = useState<string>('');
 
   // Extract repo ID from URL
   useEffect(() => {
     if (repoUrl) {
       const extractedId = extractRepoId(repoUrl);
+      console.log('[RealTimeGraph] Repo URL:', repoUrl, '=> Repo ID:', extractedId);
       setRepoId(extractedId);
+    } else {
+      console.warn('[RealTimeGraph] No repoUrl provided!');
     }
   }, [repoUrl]);
 
@@ -101,23 +104,28 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
 
   // WebSocket Connection with Exponential Backoff
   const connectWebSocket = useCallback(() => {
-    if (!repoId) return;
+    if (!repoId) {
+      console.warn('[WebSocket] Cannot connect - no repoId');
+      return;
+    }
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
     const wsUrl = backendUrl.replace(/^http/, 'ws').replace(/\/api$/, '');
+
+    console.log('[WebSocket] Connecting to:', `${wsUrl}/ws-graph`, 'for repo:', repoId);
 
     setStats((prev) => ({ ...prev, status: 'connecting' }));
 
     const stompConfig: StompConfig = {
       webSocketFactory: () => new SockJS(`${wsUrl}/ws-graph`) as any,
       debug: (str) => console.log('[STOMP]', str),
-      reconnectDelay: Math.min(1000 * Math.pow(2, connectionAttempts), 30000),
+      reconnectDelay: Math.min(1000 * Math.pow(2, connectionAttemptsRef.current), 30000),
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        console.log('[WebSocket] Connected successfully');
+        console.log('[WebSocket] Connected successfully to repo:', repoId);
         setIsConnected(true);
-        setConnectionAttempts(0);
+        connectionAttemptsRef.current = 0;
         setStats((prev) => ({ ...prev, status: 'processing' }));
 
         // Subscribe to graph updates for this repo
@@ -142,7 +150,8 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
       onStompError: (frame) => {
         console.error('[STOMP Error]', frame);
         setIsConnected(false);
-        setConnectionAttempts((prev) => prev + 1);
+        connectionAttemptsRef.current += 1;
+        console.log('[WebSocket] Connection attempt:', connectionAttemptsRef.current);
         toast.error(`WebSocket error: ${frame.headers.message || 'Connection failed'}`);
       },
     };
@@ -150,7 +159,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
     const stompClient = new Client(stompConfig);
     stompClientRef.current = stompClient;
     stompClient.activate();
-  }, [repoId, connectionAttempts]);
+  }, [repoId]);
 
   // Handle incoming graph updates
   const handleGraphUpdate = (message: IMessage) => {
@@ -264,10 +273,12 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
   // Connect on mount
   useEffect(() => {
     if (repoId) {
+      console.log('[RealTimeGraph] Initiating WebSocket connection for:', repoId);
       connectWebSocket();
     }
 
     return () => {
+      console.log('[RealTimeGraph] Cleaning up WebSocket connection');
       if (stompClientRef.current) {
         stompClientRef.current.deactivate();
       }
