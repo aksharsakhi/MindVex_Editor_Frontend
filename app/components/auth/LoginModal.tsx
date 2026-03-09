@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog, DialogRoot } from '~/components/ui/Dialog';
 import { GitHubButton } from './GitHubButton';
-import { classNames } from '~/utils/classNames';
 import { Eye, EyeOff } from 'lucide-react';
 import { setAuth } from '~/lib/stores/authStore';
 

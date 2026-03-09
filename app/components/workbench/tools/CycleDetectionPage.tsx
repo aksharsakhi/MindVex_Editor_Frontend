@@ -9,18 +9,11 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { useStore } from '@nanostores/react';
 import { graphCache } from '~/lib/stores/graphCacheStore';
-import {
-  getUnifiedParser,
-  parseModeStore,
-  ParseModeSelector,
-  ParseModeStatus,
-  type ProjectAnalysis,
-  type LLMAnalysis,
-} from '~/lib/unifiedParser';
+import { getUnifiedParser, parseModeStore, ParseModeSelector, ParseModeStatus } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, AlertCircle, Trash2 } from 'lucide-react';
+import { Brain, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface Props {
@@ -124,109 +117,111 @@ export function CycleDetectionPage({ onBack }: Props) {
   }, [detectedCycles, cycleInsights]);
 
   useEffect(() => {
-    if (containerRef.current && graphData) {
-      const elements = [
-        ...graphData.nodes.map((n) => ({ data: n.data })),
-        ...graphData.edges.map((e) => ({ data: e.data })),
-      ];
-
-      cyRef.current = cytoscape({
-        container: containerRef.current,
-        elements,
-        style: [
-          // Base styles (dimmed by default)
-          {
-            selector: 'node',
-            style: {
-              'background-color': '#1f2937', // gray-800
-              label: 'data(label)',
-              color: '#4b5563', // gray-600
-              'text-valign': 'center',
-              'text-halign': 'right',
-              'font-size': '10px',
-            },
-          },
-          {
-            selector: 'edge',
-            style: {
-              width: 1,
-              'line-color': '#1f2937', // gray-800
-              'target-arrow-color': '#1f2937',
-              'target-arrow-shape': 'triangle',
-              'curve-style': 'bezier',
-              opacity: 0.1,
-            },
-          },
-
-          // Highlight styles for general cycles
-          {
-            selector: 'node.cycle',
-            style: {
-              'background-color': '#ef4444', // red-500
-              color: '#cbd5e1', // slate-300
-              'font-size': '12px',
-            },
-          },
-          {
-            selector: 'edge.cycle',
-            style: {
-              width: 3,
-              'line-color': '#ef4444', // red-500
-              'target-arrow-color': '#ef4444',
-              opacity: 0.7,
-              'z-index': 10,
-            },
-          },
-
-          // Super-highlight styles for selected cycle
-          {
-            selector: 'node.selected-cycle',
-            style: {
-              'background-color': '#dc2626', // red-600
-              color: '#fff',
-              'font-size': '14px',
-              'font-weight': 'bold',
-              width: 40,
-              height: 40,
-              'z-index': 100,
-            },
-          },
-          {
-            selector: 'edge.selected-cycle',
-            style: {
-              width: 5,
-              'line-color': '#dc2626', // red-600
-              'target-arrow-color': '#dc2626',
-              opacity: 1,
-              'z-index': 99,
-            },
-          },
-        ],
-        layout: {
-          name: 'cose',
-          padding: 50,
-          nodeRepulsion: () => 4000,
-          animate: true,
-          animationDuration: 500,
-        },
-      });
-
-      // Apply initial cycle highlights
-      cyRef.current.edges().forEach((edge) => {
-        if (edge.data('cycle')) {
-          edge.addClass('cycle');
-          edge.source().addClass('cycle');
-          edge.target().addClass('cycle');
-        }
-      });
-
-      return () => {
-        if (cyRef.current) {
-          cyRef.current.destroy();
-          cyRef.current = null;
-        }
-      };
+    if (!containerRef.current || !graphData) {
+      return () => {};
     }
+
+    const elements = [
+      ...graphData.nodes.map((n) => ({ data: n.data })),
+      ...graphData.edges.map((e) => ({ data: e.data })),
+    ];
+
+    cyRef.current = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: [
+        // Base styles (dimmed by default)
+        {
+          selector: 'node',
+          style: {
+            'background-color': '#1f2937', // gray-800
+            label: 'data(label)',
+            color: '#4b5563', // gray-600
+            'text-valign': 'center',
+            'text-halign': 'right',
+            'font-size': '10px',
+          },
+        },
+        {
+          selector: 'edge',
+          style: {
+            width: 1,
+            'line-color': '#1f2937', // gray-800
+            'target-arrow-color': '#1f2937',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            opacity: 0.1,
+          },
+        },
+
+        // Highlight styles for general cycles
+        {
+          selector: 'node.cycle',
+          style: {
+            'background-color': '#ef4444', // red-500
+            color: '#cbd5e1', // slate-300
+            'font-size': '12px',
+          },
+        },
+        {
+          selector: 'edge.cycle',
+          style: {
+            width: 3,
+            'line-color': '#ef4444', // red-500
+            'target-arrow-color': '#ef4444',
+            opacity: 0.7,
+            'z-index': 10,
+          },
+        },
+
+        // Super-highlight styles for selected cycle
+        {
+          selector: 'node.selected-cycle',
+          style: {
+            'background-color': '#dc2626', // red-600
+            color: '#fff',
+            'font-size': '14px',
+            'font-weight': 'bold',
+            width: 40,
+            height: 40,
+            'z-index': 100,
+          },
+        },
+        {
+          selector: 'edge.selected-cycle',
+          style: {
+            width: 5,
+            'line-color': '#dc2626', // red-600
+            'target-arrow-color': '#dc2626',
+            opacity: 1,
+            'z-index': 99,
+          },
+        },
+      ],
+      layout: {
+        name: 'cose',
+        padding: 50,
+        nodeRepulsion: () => 4000,
+        animate: true,
+        animationDuration: 500,
+      },
+    });
+
+    // Apply initial cycle highlights
+    cyRef.current.edges().forEach((edge) => {
+      if (edge.data('cycle')) {
+        edge.addClass('cycle');
+        edge.source().addClass('cycle');
+        edge.target().addClass('cycle');
+      }
+    });
+
+    return () => {
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
+    };
   }, [graphData]);
 
   // Handle selected cycle change

@@ -812,32 +812,36 @@ export const Preview = memo(({ setSelectedElement }: PreviewProps) => {
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-mindvex-elements-textTertiary">Show Device Frame</span>
                         <button
-                          className={`w-10 h-5 rounded-full transition-colors duration-200 ${showDeviceFrame ? 'bg-[#6D28D9]' : 'bg-gray-300 dark:bg-gray-700'
-                            } relative`}
+                          className={`w-10 h-5 rounded-full transition-colors duration-200 ${
+                            showDeviceFrame ? 'bg-[#6D28D9]' : 'bg-gray-300 dark:bg-gray-700'
+                          } relative`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowDeviceFrame(!showDeviceFrame);
                           }}
                         >
                           <span
-                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${showDeviceFrame ? 'transform translate-x-5' : ''
-                              }`}
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                              showDeviceFrame ? 'transform translate-x-5' : ''
+                            }`}
                           />
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-mindvex-elements-textTertiary">Landscape Mode</span>
                         <button
-                          className={`w-10 h-5 rounded-full transition-colors duration-200 ${isLandscape ? 'bg-[#6D28D9]' : 'bg-gray-300 dark:bg-gray-700'
-                            } relative`}
+                          className={`w-10 h-5 rounded-full transition-colors duration-200 ${
+                            isLandscape ? 'bg-[#6D28D9]' : 'bg-gray-300 dark:bg-gray-700'
+                          } relative`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsLandscape(!isLandscape);
                           }}
                         >
                           <span
-                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${isLandscape ? 'transform translate-x-5' : ''
-                              }`}
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform duration-200 ${
+                              isLandscape ? 'transform translate-x-5' : ''
+                            }`}
                           />
                         </button>
                       </div>

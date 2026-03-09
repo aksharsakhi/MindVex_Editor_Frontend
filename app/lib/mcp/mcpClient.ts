@@ -56,7 +56,7 @@ export async function mcpSemanticSearch(repoUrl: string, query: string, topK = 5
 
 export async function mcpGetWiki(
   repoUrl: string,
-  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string },
 ): Promise<McpWikiResponse> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/wiki?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
@@ -67,10 +67,13 @@ export async function mcpGetWiki(
   if (!res.ok) {
     // Try to get the backend's error message
     let detail = `${res.status}`;
+
     try {
-      const errBody = await res.json() as any;
+      const errBody = (await res.json()) as any;
       detail = errBody.message || errBody.error || detail;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     throw new Error(detail);
   }
 
@@ -80,7 +83,7 @@ export async function mcpGetWiki(
 export async function mcpDescribeModule(
   repoUrl: string,
   modulePath: string,
-  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string },
 ): Promise<McpModuleResponse> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/describe?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
@@ -97,7 +100,7 @@ export async function mcpDescribeModule(
 
 export async function mcpRecommendDiagrams(
   repoUrl: string,
-  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string },
 ): Promise<{ recommended: string }> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/diagram/recommend?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
@@ -115,7 +118,7 @@ export async function mcpRecommendDiagrams(
 export async function mcpGenerateDiagram(
   repoUrl: string,
   diagramType: string,
-  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string }
+  providerInfo?: { name: string; model?: string; apiKey?: string; baseUrl?: string },
 ): Promise<{ graph: any }> {
   const res = await fetch(`${BASE_URL}/api/mcp/tools/diagram/generate?repoUrl=${encodeURIComponent(repoUrl)}`, {
     method: 'POST',
@@ -174,7 +177,7 @@ export async function mcpChat(
   });
 
   if (!res.ok) {
-    const errorBody = await res.text().catch(() => "No error details");
+    const errorBody = await res.text().catch(() => 'No error details');
     console.error(`[MCP Chat Error] ${res.status}: ${errorBody}`);
     throw new Error(`MCP chat failed: ${res.status}`);
   }

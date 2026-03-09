@@ -424,7 +424,7 @@ Rules:
 
         try {
           parsed = JSON.parse(jsonStr);
-        } catch (err) {
+        } catch {
           console.error('AI JSON parsing failed:', response.text);
           return this._generateMockProjectLLMAnalysis(results, projectMetadata);
         }

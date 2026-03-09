@@ -34,6 +34,7 @@ const NotificationsTab = () => {
 
   useEffect(() => {
     const startTime = performance.now();
+
     return () => {
       const duration = performance.now() - startTime;
       logStore.logPerformanceMetric('NotificationsTab', 'mount-duration', duration);
@@ -62,11 +63,26 @@ const NotificationsTab = () => {
   const filteredLogs = useMemo(() => {
     return Object.values(logs)
       .filter((log) => {
-        if (filter === 'all') return true;
-        if (filter === 'update') return log.details?.type === 'update';
-        if (filter === 'system') return log.category === 'system';
-        if (filter === 'provider') return log.category === 'provider';
-        if (filter === 'network') return log.category === 'network';
+        if (filter === 'all') {
+          return true;
+        }
+
+        if (filter === 'update') {
+          return log.details?.type === 'update';
+        }
+
+        if (filter === 'system') {
+          return log.category === 'system';
+        }
+
+        if (filter === 'provider') {
+          return log.category === 'provider';
+        }
+
+        if (filter === 'network') {
+          return log.category === 'network';
+        }
+
         return log.level === filter;
       })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -91,6 +107,7 @@ const NotificationsTab = () => {
         border: 'border-purple-200 dark:border-purple-500/20',
       };
     }
+
     switch (level) {
       case 'error':
         return {
@@ -129,9 +146,21 @@ const NotificationsTab = () => {
         <div className="flex flex-col gap-2 mt-2">
           <p className="text-xs text-gray-600 dark:text-gray-400">{details.message}</p>
           <div className="flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-500">
-            {details.currentVersion && <span>Current: <strong>{details.currentVersion}</strong></span>}
-            {details.latestVersion && <span>Latest: <strong>{details.latestVersion}</strong></span>}
-            {details.branch && <span>Branch: <strong>{details.branch}</strong></span>}
+            {details.currentVersion && (
+              <span>
+                Current: <strong>{details.currentVersion}</strong>
+              </span>
+            )}
+            {details.latestVersion && (
+              <span>
+                Latest: <strong>{details.latestVersion}</strong>
+              </span>
+            )}
+            {details.branch && (
+              <span>
+                Branch: <strong>{details.branch}</strong>
+              </span>
+            )}
           </div>
           {details.updateUrl && (
             <button
@@ -152,19 +181,14 @@ const NotificationsTab = () => {
         </div>
       );
     }
-    return details.message ? (
-      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{details.message}</p>
-    ) : null;
+
+    return details.message ? <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{details.message}</p> : null;
   };
 
   return (
     <div className="flex h-full flex-col gap-5">
       {/* Stats Bar */}
-      <motion.div
-        className="grid grid-cols-4 gap-3"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div className="grid grid-cols-4 gap-3" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         {[
           { label: 'Total', value: stats.total, icon: 'i-ph:bell', color: 'purple' },
           { label: 'Errors', value: stats.errors, icon: 'i-ph:warning-circle', color: 'red' },
@@ -202,7 +226,10 @@ const NotificationsTab = () => {
               )}
             >
               <span
-                className={classNames('text-base', filterOptions.find((opt) => opt.id === filter)?.icon || 'i-ph:funnel')}
+                className={classNames(
+                  'text-base',
+                  filterOptions.find((opt) => opt.id === filter)?.icon || 'i-ph:funnel',
+                )}
                 style={{ color: filterOptions.find((opt) => opt.id === filter)?.color }}
               />
               <span className="text-sm">{filterOptions.find((opt) => opt.id === filter)?.label || 'Filter'}</span>

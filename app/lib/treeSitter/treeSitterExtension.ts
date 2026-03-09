@@ -171,8 +171,8 @@ async function loadTsLanguage(lang: SupportedLanguage): Promise<any | null> {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Parser = require('web-tree-sitter') as any;
-    return await Parser.Language.load(grammarUrls[lang]);
+    const parser = require('web-tree-sitter') as any;
+    return await parser.Language.load(grammarUrls[lang]);
   } catch {
     console.warn(`[tree-sitter] Failed to load grammar for ${lang}`);
     return null;

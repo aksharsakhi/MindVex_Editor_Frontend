@@ -1,6 +1,7 @@
 import blitzPlugin from '@blitz/eslint-plugin';
 import { jsFileExtensions } from '@blitz/eslint-plugin/dist/configs/javascript.js';
 import { getNamingConventionRule, tsFileExtensions } from '@blitz/eslint-plugin/dist/configs/typescript.js';
+import unusedImports from 'eslint-plugin-unused-imports';
 
 export default [
   {
@@ -8,6 +9,9 @@ export default [
   },
   ...blitzPlugin.configs.recommended(),
   {
+    plugins: {
+      'unused-imports': unusedImports,
+    },
     rules: {
       '@blitz/catch-error-name': 'off',
       '@typescript-eslint/no-this-alias': 'off',
@@ -23,6 +27,16 @@ export default [
       'no-eval': ['error'],
       'linebreak-style': ['error', 'unix'],
       'arrow-spacing': ['error', { before: true, after: true }],
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {

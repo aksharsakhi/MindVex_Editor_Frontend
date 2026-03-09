@@ -72,6 +72,7 @@ export function useGit() {
           try {
             // Ensure parent directory exists
             const pathParts = relativePath.split('/');
+
             if (pathParts.length > 1) {
               const dirPath = pathParts.slice(0, -1).join('/');
               await webcontainer.fs.mkdir(dirPath, { recursive: true });
@@ -112,6 +113,7 @@ export function useGit() {
           if (retryCount < 2) {
             return gitClone(url, retryCount + 1);
           }
+
           toast.error('Network error. Please check your connection and try again.');
         } else {
           toast.error(`Failed to clone repository: ${errorMessage}`);

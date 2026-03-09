@@ -28,15 +28,12 @@ import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
 import {
   Brain,
-  Zap,
-  Info,
   RefreshCw,
   Download,
   Flame,
   TrendingUp,
   BarChart2,
   Search,
-  Filter,
   ArrowUpDown,
   FileCode,
   FileJson,

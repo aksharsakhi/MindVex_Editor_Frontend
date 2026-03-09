@@ -181,13 +181,15 @@ export default function ProfileTab() {
               GitHub Connection
             </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Connect your GitHub account using a <strong>Personal Access Token (classic)</strong> to push security fixes.
-              Ensure it has <code>repo</code> permissions.
+              Connect your GitHub account using a <strong>Personal Access Token (classic)</strong> to push security
+              fixes. Ensure it has <code>repo</code> permissions.
             </p>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Personal Access Token</label>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  Personal Access Token
+                </label>
                 <div className="flex gap-3">
                   <div className="relative flex-1 group">
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
@@ -209,7 +211,10 @@ export default function ProfileTab() {
                     onClick={async () => {
                       const input = document.getElementById('github-token-input') as HTMLInputElement;
                       const token = input.value;
-                      if (!token) return;
+
+                      if (!token) {
+                        return;
+                      }
 
                       try {
                         const jwtToken = localStorage.getItem('auth_token');
@@ -217,9 +222,9 @@ export default function ProfileTab() {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${jwtToken}`
+                            Authorization: `Bearer ${jwtToken}`,
                           },
-                          body: JSON.stringify({ token })
+                          body: JSON.stringify({ token }),
                         });
 
                         if (res.ok) {
@@ -228,7 +233,7 @@ export default function ProfileTab() {
                         } else {
                           toast.error('Failed to link GitHub token.');
                         }
-                      } catch (err) {
+                      } catch {
                         toast.error('Connection error.');
                       }
                     }}

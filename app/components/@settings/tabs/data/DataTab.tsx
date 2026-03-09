@@ -88,18 +88,14 @@ function ActionCard({
           <div
             className={classNames(
               'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-              variant === 'danger'
-                ? 'bg-red-50 dark:bg-red-500/10'
-                : 'bg-purple-50 dark:bg-purple-500/10',
+              variant === 'danger' ? 'bg-red-50 dark:bg-red-500/10' : 'bg-purple-50 dark:bg-purple-500/10',
             )}
           >
             <div
               className={classNames(
                 icon,
                 'w-4.5 h-4.5',
-                variant === 'danger'
-                  ? 'text-red-500 dark:text-red-400'
-                  : 'text-purple-600 dark:text-purple-400',
+                variant === 'danger' ? 'text-red-500 dark:text-red-400' : 'text-purple-600 dark:text-purple-400',
               )}
             />
           </div>
@@ -138,7 +134,17 @@ function ActionCard({
 }
 
 // ── Stat Card ──────────────────────────────────────────────────
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: string | number; color: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: string;
+  label: string;
+  value: string | number;
+  color: string;
+}) {
   return (
     <div
       className={classNames(
@@ -148,7 +154,12 @@ function StatCard({ icon, label, value, color }: { icon: string; label: string; 
       )}
     >
       <div className="flex items-center gap-3">
-        <div className={classNames('w-10 h-10 rounded-xl flex items-center justify-center', `bg-${color}-50 dark:bg-${color}-500/10`)}>
+        <div
+          className={classNames(
+            'w-10 h-10 rounded-xl flex items-center justify-center',
+            `bg-${color}-50 dark:bg-${color}-500/10`,
+          )}
+        >
           <div className={classNames(icon, `w-5 h-5 text-${color}-500`)} />
         </div>
         <div>
@@ -208,10 +219,17 @@ export function DataTab() {
 
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
+
         if (key) {
           const value = localStorage.getItem(key);
-          if (value) totalSize += value.length * 2; // UTF-16
-          if (key.startsWith('mindvex_')) count++;
+
+          if (value) {
+            totalSize += value.length * 2;
+          } // UTF-16
+
+          if (key.startsWith('mindvex_')) {
+            count++;
+          }
         }
       }
 
@@ -222,6 +240,7 @@ export function DataTab() {
       } else {
         setStorageUsed(`${(totalSize / (1024 * 1024)).toFixed(1)} MB`);
       }
+
       setSettingsCount(count);
     } catch {
       setStorageUsed('Unknown');
@@ -231,10 +250,13 @@ export function DataTab() {
   // Handlers
   const handleExportAllSettings = useCallback(() => {
     setIsExporting(true);
+
     try {
       const data: Record<string, any> = {};
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
+
         if (key) {
           try {
             data[key] = JSON.parse(localStorage.getItem(key) || '');
@@ -243,6 +265,7 @@ export function DataTab() {
           }
         }
       }
+
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -251,7 +274,7 @@ export function DataTab() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Settings exported successfully');
-    } catch (err) {
+    } catch {
       toast.error('Failed to export settings');
     } finally {
       setIsExporting(false);
@@ -260,14 +283,20 @@ export function DataTab() {
 
   const handleImportSettings = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+
+    if (!file) {
+      return;
+    }
 
     setIsImporting(true);
+
     const reader = new FileReader();
+
     reader.onload = (evt) => {
       try {
         const data = JSON.parse(evt.target?.result as string);
         let importedCount = 0;
+
         for (const [key, value] of Object.entries(data)) {
           localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
           importedCount++;
@@ -289,14 +318,18 @@ export function DataTab() {
       toast.error('Database not available');
       return;
     }
+
     setIsExporting(true);
+
     try {
       const { getAllChats } = await import('~/lib/persistence/chats');
       const chats = await getAllChats(db);
+
       if (chats.length === 0) {
         toast.warning('No chats to export');
         return;
       }
+
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -305,7 +338,7 @@ export function DataTab() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Exported ${chats.length} chats`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to export chats');
     } finally {
       setIsExporting(false);
@@ -314,11 +347,16 @@ export function DataTab() {
 
   const handleResetSettings = useCallback(() => {
     setIsResetting(true);
+
     try {
       const keys: string[] = [];
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key?.startsWith('mindvex_')) keys.push(key);
+
+        if (key?.startsWith('mindvex_')) {
+          keys.push(key);
+        }
       }
       keys.forEach((key) => localStorage.removeItem(key));
       setShowResetConfirm(false);
@@ -332,11 +370,16 @@ export function DataTab() {
   }, []);
 
   const handleDeleteAllChats = useCallback(async () => {
-    if (!db) return;
+    if (!db) {
+      return;
+    }
+
     setIsResetting(true);
+
     try {
       // Clear all object stores
       const storeNames = Array.from(db.objectStoreNames);
+
       for (const storeName of storeNames) {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
@@ -422,7 +465,8 @@ export function DataTab() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Delete All Chats?</h3>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-              This will permanently delete all {chatSummaries.length} chats and {totalMessages} messages. This action cannot be undone.
+              This will permanently delete all {chatSummaries.length} chats and {totalMessages} messages. This action
+              cannot be undone.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button
@@ -444,11 +488,7 @@ export function DataTab() {
       )}
 
       {/* Storage Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-4 gap-3"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-4 gap-3">
         <StatCard icon="i-ph:hard-drive" label="Storage Used" value={storageUsed} color="purple" />
         <StatCard icon="i-ph:gear" label="Settings" value={settingsCount} color="blue" />
         <StatCard icon="i-ph:chats" label="Chats" value={chatSummaries.length} color="emerald" />

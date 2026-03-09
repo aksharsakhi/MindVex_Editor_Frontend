@@ -1,6 +1,6 @@
 import { type RepositoryHistoryItem } from '~/lib/stores/repositoryHistory';
 import { format } from 'date-fns';
-import { forwardRef, type ForwardedRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Checkbox } from '~/components/ui/Checkbox';
 import { classNames } from '~/utils/classNames';
 

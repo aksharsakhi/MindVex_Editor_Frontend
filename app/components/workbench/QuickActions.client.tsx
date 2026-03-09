@@ -21,7 +21,7 @@ import { EvolutionaryBlame } from './EvolutionaryBlame';
 import { IntelligentChat } from './IntelligentChat';
 import { LivingWiki } from './LivingWiki';
 import { CodeHealthHeatmap } from './CodeHealthHeatmap';
-import { AICodeReasoning } from './tools/AICodeReasoning';
+import { AiCodeReasoning } from './tools/AICodeReasoning';
 
 interface QuickActionItem {
   id: string;
@@ -184,7 +184,7 @@ export function QuickActions() {
       case 'code-health-heatmap':
         return <CodeHealthHeatmap />;
       case 'ai-code-reasoning':
-        return <AICodeReasoning onBack={handleBackToMenu} />;
+        return <AiCodeReasoning onBack={handleBackToMenu} />;
       default:
         return null;
     }

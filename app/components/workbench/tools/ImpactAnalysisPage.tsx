@@ -14,13 +14,12 @@ import {
   parseModeStore,
   ParseModeSelector,
   ParseModeStatus,
-  type ProjectAnalysis,
   type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Microscope, AlertTriangle } from 'lucide-react';
+import { Brain, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface Props {
@@ -52,135 +51,137 @@ export function ImpactAnalysisPage({ onBack }: Props) {
   const [showLLMDetails, setShowLLMDetails] = useState(false);
 
   useEffect(() => {
-    if (containerRef.current && graphData) {
-      const elements = [
-        ...graphData.nodes.map((n) => ({ data: n.data })),
-        ...graphData.edges.map((e) => ({ data: e.data })),
-      ];
-
-      cyRef.current = cytoscape({
-        container: containerRef.current,
-        elements,
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': '#475569', // slate-600
-              label: 'data(label)',
-              color: '#94a3b8',
-              'text-valign': 'center',
-              'text-halign': 'right',
-              'font-size': '11px',
-              'transition-property': 'background-color, color, width, height',
-              'transition-duration': 200,
-            },
-          },
-          {
-            selector: 'edge',
-            style: {
-              width: 1,
-              'line-color': '#334155', // slate-700
-              'target-arrow-color': '#334155',
-              'target-arrow-shape': 'triangle',
-              'curve-style': 'bezier',
-              opacity: 0.3,
-            },
-          },
-
-          // Highlight styles
-          {
-            selector: 'node.selected',
-            style: {
-              'background-color': '#ec4899', // pink-500
-              color: '#fff',
-              'font-size': '14px',
-              'font-weight': 'bold',
-              width: 40,
-              height: 40,
-            },
-          },
-          {
-            selector: 'node.impacted',
-            style: {
-              'background-color': '#f472b6', // pink-400
-              color: '#fdf2f8',
-              'font-size': '12px',
-              width: 35,
-              height: 35,
-            },
-          },
-          {
-            selector: 'edge.impact-path',
-            style: {
-              width: 3,
-              'line-color': '#ec4899', // pink-500
-              'target-arrow-color': '#ec4899',
-              opacity: 1,
-              'z-index': 100,
-            },
-          },
-        ],
-        layout: {
-          name: 'cose',
-          padding: 50,
-          nodeRepulsion: () => 4000,
-          animate: true,
-          animationDuration: 500,
-        },
-      });
-
-      // Handle impact analysis click
-      cyRef.current.on('tap', 'node', async (evt) => {
-        const node = evt.target;
-        const cy = cyRef.current;
-
-        if (!cy) {
-          return;
-        }
-
-        // Reset all
-        cy.elements().removeClass('selected impacted impact-path');
-
-        // Highlight clicked node
-        node.addClass('selected');
-
-        // Find successors (files that depend on this one)
-        const successors = node.successors();
-        successors.nodes().addClass('impacted');
-        successors.edges().addClass('impact-path');
-
-        const selected: ImpactNode = {
-          id: node.id(),
-          label: node.data('label'),
-          type: node.data('type'),
-        };
-
-        const impacted = successors.nodes().map((n: cytoscape.NodeSingular) => ({
-          id: n.id(),
-          label: n.data('label'),
-          type: n.data('type'),
-          risk: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : ('low' as const),
-        }));
-
-        setAnalysisResult({
-          selectedNode: selected,
-          impactedNodes: impacted,
-          riskScore: (impacted.length / Math.max(1, cy.nodes().length)) * 100,
-        });
-
-        // Perform AI analysis if in LLM mode
-        if (parseMode.type === 'llm-enhanced') {
-          performAIImpactAnalysis(selected, impacted);
-        }
-      });
-
-      return () => {
-        if (cyRef.current) {
-          cyRef.current.destroy();
-          cyRef.current = null;
-        }
-      };
+    if (!containerRef.current || !graphData) {
+      return () => {};
     }
+
+    const elements = [
+      ...graphData.nodes.map((n) => ({ data: n.data })),
+      ...graphData.edges.map((e) => ({ data: e.data })),
+    ];
+
+    cyRef.current = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-color': '#475569', // slate-600
+            label: 'data(label)',
+            color: '#94a3b8',
+            'text-valign': 'center',
+            'text-halign': 'right',
+            'font-size': '11px',
+            'transition-property': 'background-color, color, width, height',
+            'transition-duration': 200,
+          },
+        },
+        {
+          selector: 'edge',
+          style: {
+            width: 1,
+            'line-color': '#334155', // slate-700
+            'target-arrow-color': '#334155',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            opacity: 0.3,
+          },
+        },
+
+        // Highlight styles
+        {
+          selector: 'node.selected',
+          style: {
+            'background-color': '#ec4899', // pink-500
+            color: '#fff',
+            'font-size': '14px',
+            'font-weight': 'bold',
+            width: 40,
+            height: 40,
+          },
+        },
+        {
+          selector: 'node.impacted',
+          style: {
+            'background-color': '#f472b6', // pink-400
+            color: '#fdf2f8',
+            'font-size': '12px',
+            width: 35,
+            height: 35,
+          },
+        },
+        {
+          selector: 'edge.impact-path',
+          style: {
+            width: 3,
+            'line-color': '#ec4899', // pink-500
+            'target-arrow-color': '#ec4899',
+            opacity: 1,
+            'z-index': 100,
+          },
+        },
+      ],
+      layout: {
+        name: 'cose',
+        padding: 50,
+        nodeRepulsion: () => 4000,
+        animate: true,
+        animationDuration: 500,
+      },
+    });
+
+    // Handle impact analysis click
+    cyRef.current.on('tap', 'node', async (evt) => {
+      const node = evt.target;
+      const cy = cyRef.current;
+
+      if (!cy) {
+        return;
+      }
+
+      // Reset all
+      cy.elements().removeClass('selected impacted impact-path');
+
+      // Highlight clicked node
+      node.addClass('selected');
+
+      // Find successors (files that depend on this one)
+      const successors = node.successors();
+      successors.nodes().addClass('impacted');
+      successors.edges().addClass('impact-path');
+
+      const selected: ImpactNode = {
+        id: node.id(),
+        label: node.data('label'),
+        type: node.data('type'),
+      };
+
+      const impacted = successors.nodes().map((n: cytoscape.NodeSingular) => ({
+        id: n.id(),
+        label: n.data('label'),
+        type: n.data('type'),
+        risk: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : ('low' as const),
+      }));
+
+      setAnalysisResult({
+        selectedNode: selected,
+        impactedNodes: impacted,
+        riskScore: (impacted.length / Math.max(1, cy.nodes().length)) * 100,
+      });
+
+      // Perform AI analysis if in LLM mode
+      if (parseMode.type === 'llm-enhanced') {
+        performAIImpactAnalysis(selected, impacted);
+      }
+    });
+
+    return () => {
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
+    };
   }, [graphData, parseMode]);
 
   const performAIImpactAnalysis = async (selected: ImpactNode, impacted: ImpactNode[]) => {

@@ -881,11 +881,10 @@ export class WorkbenchStore {
     username?: string,
     token?: string,
     isPrivate: boolean = false,
-    branchName: string = 'main',
+    _branchName: string = 'main',
   ) {
     try {
       const isGitHub = provider === 'github';
-      const isGitLab = provider === 'gitlab';
 
       const authToken = token || Cookies.get(isGitHub ? 'githubToken' : 'gitlabToken');
       const owner = username || Cookies.get(isGitHub ? 'githubUsername' : 'gitlabUsername');

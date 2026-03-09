@@ -14,16 +14,16 @@ import {
   ParseModeSelector,
   ParseModeStatus,
   setParserOnlyMode,
-  type ProjectAnalysis,
   type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Layers, Box, RotateCw } from 'lucide-react';
+import { Brain, RefreshCw, Download, Layers, Box, RotateCw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ForceGraph2D, ForceGraph3D, SpriteText } from '~/components/ui/ForceGraph.client';
 import { ArchitectureDiagram } from './ArchitectureDiagram';
+
 // @ts-ignore - three types not installed
 import * as THREE from 'three';
 
@@ -489,30 +489,33 @@ export function ArchitecturePage({ onBack }: Props) {
           <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700 mr-2">
             <button
               onClick={() => setViewMode('2d')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === '2d'
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === '2d'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                }`}
+              }`}
             >
               <Layers className="w-3 h-3" />
               2D
             </button>
             <button
               onClick={() => setViewMode('3d')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === '3d'
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === '3d'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                }`}
+              }`}
             >
               <Box className="w-3 h-3" />
               3D
             </button>
             <button
               onClick={() => setViewMode('diagram')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${viewMode === 'diagram'
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'diagram'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                }`}
+              }`}
               title="Architecture Diagram View"
             >
               <RotateCw className="w-3 h-3" />

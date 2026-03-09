@@ -40,7 +40,7 @@ class RepositoryHistoryStore {
 
   constructor() {
     // Load repository history from localStorage on initialization
-    this.loadFromStorage();
+    this._loadFromStorage();
   }
 
   /**
@@ -76,7 +76,7 @@ class RepositoryHistoryStore {
         }
 
         this._repositoryHistory.set(merged);
-        this.saveToStorage();
+        this._saveToStorage();
       } catch (error) {
         console.error('Failed to load repository history from backend:', error);
       } finally {
@@ -85,7 +85,7 @@ class RepositoryHistoryStore {
     }
   }
 
-  private loadFromStorage() {
+  private _loadFromStorage() {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('mindvex_repository_history');
 
@@ -106,14 +106,14 @@ class RepositoryHistoryStore {
     }
   }
 
-  private saveToStorage() {
+  private _saveToStorage() {
     if (typeof window !== 'undefined') {
       const items = Object.values(this._repositoryHistory.get());
       localStorage.setItem('mindvex_repository_history', JSON.stringify(items));
     }
   }
 
-  private enforceMaxLimit() {
+  private _enforceMaxLimit() {
     const currentHistory = this._repositoryHistory.get();
     const items = Object.values(currentHistory).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
@@ -166,7 +166,7 @@ class RepositoryHistoryStore {
         commitHash: commitHash || existingRepo.commitHash,
       };
       this._repositoryHistory.set({ ...currentHistory, [existingRepo.id]: updatedItem });
-      this.saveToStorage();
+      this._saveToStorage();
 
       return updatedItem;
     }
@@ -187,8 +187,8 @@ class RepositoryHistoryStore {
     };
 
     this._repositoryHistory.set({ ...currentHistory, [id]: newItem });
-    this.enforceMaxLimit();
-    this.saveToStorage();
+    this._enforceMaxLimit();
+    this._saveToStorage();
 
     return newItem;
   }
@@ -208,7 +208,7 @@ class RepositoryHistoryStore {
     const newHistory = { ...currentHistory };
     delete newHistory[id];
     this._repositoryHistory.set(newHistory);
-    this.saveToStorage();
+    this._saveToStorage();
   }
 
   async clearHistory() {
@@ -221,7 +221,7 @@ class RepositoryHistoryStore {
     }
 
     this._repositoryHistory.set({});
-    this.saveToStorage();
+    this._saveToStorage();
   }
 
   getRepository(id: string): RepositoryHistoryItem | undefined {

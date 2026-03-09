@@ -53,9 +53,11 @@ export interface ReferenceResult {
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem('auth_token');
+
   if (token) {
     return { Authorization: `Bearer ${token}` };
   }
+
   return {};
 }
 
@@ -214,7 +216,7 @@ export async function getFallbackGraph(): Promise<GraphResponse> {
               await container.fs.readFile(p, 'utf-8');
               resolvedTarget = p;
               break;
-            } catch (e) {
+            } catch {
               // continue
             }
           }
@@ -251,7 +253,7 @@ export async function getFallbackGraph(): Promise<GraphResponse> {
           });
         }
       }
-    } catch (e) {
+    } catch {
       // skip unreadable files
     }
   }

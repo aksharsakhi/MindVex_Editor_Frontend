@@ -1,26 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { Link } from '@remix-run/react';
 import { toast } from 'react-toastify';
-import {
-  Github,
-  FolderOpen,
-  Code2,
-  Clock,
-  GitBranch,
-  Trash2,
-  ExternalLink,
-  ChevronRight,
-  RefreshCw,
-  X,
-  Loader2,
-} from 'lucide-react';
+import { Github, FolderOpen, Clock, GitBranch, Trash2, ExternalLink, X, Loader2 } from 'lucide-react';
 
 import { useGit } from '~/lib/hooks/useGit';
 import { repositoryHistoryStore, type RepositoryHistoryItem } from '~/lib/stores/repositoryHistory';
 import { importFilesToWorkbench } from '~/utils/directFileImport';
 import { importGitRepoToWorkbench } from '~/utils/workbenchImport';
-import { workbenchStore } from '~/lib/stores/workbench';
 import { refreshGraph } from '~/lib/stores/graphCacheStore';
 import { classNames } from '~/utils/classNames';
 import { ImportRepoModal } from './ImportRepoModal';
@@ -329,12 +315,13 @@ export function HomeContent() {
               'p-8 min-h-[160px]',
             )}
           >
+            {/* prettier-ignore */}
             <input
               ref={folderInputRef}
               type="file"
               className="hidden"
 
-              // @ts-ignore
+              // @ts-ignore - webkitdirectory is a non-standard HTML attribute for folder selection
               webkitdirectory=""
               directory=""
               multiple

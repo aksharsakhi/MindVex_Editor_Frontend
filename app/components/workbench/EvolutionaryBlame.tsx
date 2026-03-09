@@ -25,19 +25,15 @@ import {
   type LLMAnalysis,
 } from '~/lib/unifiedParser';
 import { Button } from '~/components/ui/Button';
-import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
 import {
   Brain,
   Zap,
-  Info,
   RefreshCw,
-  Download,
   Search,
   History,
   Clock,
   User,
-  TrendingUp,
   AlertTriangle,
   Users,
   GitCommit,
@@ -97,6 +93,7 @@ function buildFileTree(files: FileMap): FileNode[] {
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       currentPath = currentPath ? `${currentPath}/${part}` : part;
+
       const isFile = i === parts.length - 1;
 
       if (isFile) {
@@ -280,11 +277,13 @@ export function EvolutionaryBlame({ filePath }: Props) {
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
+
       if (next.has(path)) {
         next.delete(path);
       } else {
         next.add(path);
       }
+
       return next;
     });
   };

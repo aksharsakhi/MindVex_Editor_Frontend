@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from '@remix-run/react';
 import { webcontainer } from '~/lib/webcontainer';
 import { getLanguageFromExtension } from '~/utils/getLanguageFromExtension';
 import { path } from '~/utils/path';
@@ -126,11 +125,11 @@ export function Dashboard() {
                   try {
                     const content = await container.fs.readFile(fullPath, 'utf-8');
                     files.push({ path: fullPath, content: content as string });
-                  } catch (e) { }
+                  } catch (e) {}
                 }
               }
             }
-          } catch (e) { }
+          } catch (e) {}
 
           return files;
         }
@@ -332,19 +331,19 @@ export function Dashboard() {
     data.totalFiles > 0
       ? data
       : {
-        totalFiles: 0,
-        totalModules: 0,
-        totalLines: 0,
-        totalCodeLines: 0,
-        totalCommentLines: 0,
-        totalBlankLines: 0,
-        codeHealthScore: 0,
-        codeHealthReasons: [],
-        languageDistribution: [],
-        aiSummary: 'No repository files detected yet. Try importing a repository from the sidebar.',
-        architectureLayers: ['N/A'],
-        potentialIssues: ['Import a repository to see optimization vectors'],
-      };
+          totalFiles: 0,
+          totalModules: 0,
+          totalLines: 0,
+          totalCodeLines: 0,
+          totalCommentLines: 0,
+          totalBlankLines: 0,
+          codeHealthScore: 0,
+          codeHealthReasons: [],
+          languageDistribution: [],
+          aiSummary: 'No repository files detected yet. Try importing a repository from the sidebar.',
+          architectureLayers: ['N/A'],
+          potentialIssues: ['Import a repository to see optimization vectors'],
+        };
 
   return (
     <div className="p-6 space-y-8 overflow-auto h-full max-w-[1600px] mx-auto w-full transition-all duration-300">

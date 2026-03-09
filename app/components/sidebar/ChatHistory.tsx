@@ -1,5 +1,3 @@
-import { useStore } from '@nanostores/react';
-import { classNames } from '~/utils/classNames';
 import { binDates } from './date-binning';
 import { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
@@ -17,10 +15,10 @@ export function ChatHistory({
   selectionMode = false,
   selectedItems,
   onToggleSelection,
-  onBulkDelete,
+  onBulkDelete: _onBulkDelete,
 }: ChatHistoryProps) {
   const { exportChat, duplicateCurrentChat } = useChatHistory();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm] = useState('');
 
   // We need to fetch the chat history list from the database
   const [chatHistory, setChatHistory] = useState<any[]>([]);

@@ -1,7 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { classNames } from '~/utils/classNames';
 import { repositoryHistoryStore, type RepositoryHistoryItem } from '~/lib/stores/repositoryHistory';
-import { workbenchStore } from '~/lib/stores/workbench';
 import { binDates } from './date-binning';
 
 /*

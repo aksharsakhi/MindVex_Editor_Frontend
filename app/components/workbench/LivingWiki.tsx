@@ -4,13 +4,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '@nanostores/react';
-import { mcpGetWiki, mcpDescribeModule, mcpRecommendDiagrams, mcpGenerateDiagram } from '~/lib/mcp/mcpClient';
+import { mcpGetWiki, mcpRecommendDiagrams, mcpGenerateDiagram } from '~/lib/mcp/mcpClient';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import { providersStore } from '~/lib/stores/settings';
-import { Button } from '~/components/ui/Button';
 import {
   RefreshCw,
-  Book,
   FileText,
   Package,
   Sparkles,
@@ -29,8 +27,6 @@ import {
   Copy,
   CheckCheck,
   Printer,
-  X,
-  Info,
   LayoutDashboard,
   Play,
 } from 'lucide-react';
@@ -154,12 +150,16 @@ function DiagramGeneratorPanel({
   const fetchRecommendations = async () => {
     try {
       setLoadingContext(true);
+
       const res = await mcpRecommendDiagrams(repoUrl, providerInfo);
+
       if (res.recommended) {
         let parsed = JSON.parse(res.recommended);
+
         if (!Array.isArray(parsed) && parsed.recommended) {
           parsed = parsed.recommended;
         }
+
         setRecommended(Array.isArray(parsed) ? parsed : []);
       }
     } catch (e) {
@@ -172,6 +172,7 @@ function DiagramGeneratorPanel({
   const handleGenerate = async (dType: string) => {
     try {
       setGenerating(dType);
+
       const res = await mcpGenerateDiagram(repoUrl, dType, providerInfo);
       const fileName = dType.replace(/\s+/g, '-').toLowerCase() + '-graph.json';
       onDiagramGenerated(fileName, JSON.stringify(res.graph, null, 2));
@@ -311,9 +312,13 @@ function DashboardView({
 
   let healthScore: number | null = null;
   const healthContent = docFiles['documentation-health.md'];
+
   if (healthContent) {
     const m = healthContent.match(/(\d{1,3})\s*(?:\/\s*100|%|out of 100)/i);
-    if (m) healthScore = Math.min(100, parseInt(m[1]));
+
+    if (m) {
+      healthScore = Math.min(100, parseInt(m[1]));
+    }
   }
 
   const docColor =
@@ -337,7 +342,10 @@ function DashboardView({
   const otherDocs = availableDocs.filter((t) => !t.key.endsWith('.md') && !t.key.endsWith('.json'));
 
   const renderFileGrid = (docs: TabConfig[], title: string, subtitle: string) => {
-    if (docs.length === 0) return null;
+    if (docs.length === 0) {
+      return null;
+    }
+
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-3">
@@ -479,9 +487,13 @@ const CROSS_REF_RE =
 const FILE_LINK_RE = /\[([^\]]+)\]\(([a-z0-9_-]+\.(?:md|json|txt))\)/gi;
 
 function isAsciiDiagram(lines: string[]) {
-  if (lines.length < 3) return false;
+  if (lines.length < 3) {
+    return false;
+  }
+
   const diagChars = /[|+\-=<>v^]{2,}/;
   const matchCount = lines.filter((l) => diagChars.test(l)).length;
+
   return matchCount / lines.length > 0.4;
 }
 
@@ -515,11 +527,13 @@ function MarkdownRenderer({ content, onNavigate }: { content: string; onNavigate
 function ApiExplorer({ content }: { content: string }) {
   const [search, setSearch] = useState('');
   let data: any = {};
+
   try {
     data = JSON.parse(content);
   } catch {
     /* raw */
   }
+
   const endpoints: any[] = data.endpoints || [];
   const filtered = endpoints.filter(
     (ep: any) =>
@@ -569,12 +583,14 @@ function ApiExplorer({ content }: { content: string }) {
 
 function SnapshotDashboard({ content }: { content: string }) {
   let data: any = {};
+
   try {
     data = JSON.parse(content) || {};
   } catch (e) {
     console.error('[SnapshotDashboard] Failed to parse snapshot JSON:', e);
     data = {};
   }
+
   const stats = [
     {
       label: 'Total Files',
@@ -601,6 +617,7 @@ function SnapshotDashboard({ content }: { content: string }) {
       color: 'text-red-400',
     },
   ];
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       {stats.map((s, i) => (
@@ -686,7 +703,8 @@ function TreeVisualizer({ content }: { content: string }) {
 }
 
 function ArchitectureVisualizer({ content }: { content: string }) {
-  let data: { nodes: any[]; links: any[] } = { nodes: [], links: [] };
+  const data: { nodes: any[]; links: any[] } = { nodes: [], links: [] };
+
   try {
     const raw = JSON.parse(content);
 
@@ -733,11 +751,16 @@ function ArchitectureVisualizer({ content }: { content: string }) {
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      return () => {};
+    }
 
     // Initial size
     const { clientWidth, clientHeight } = containerRef.current;
-    if (clientWidth && clientHeight) setDimensions({ width: clientWidth, height: clientHeight });
+
+    if (clientWidth && clientHeight) {
+      setDimensions({ width: clientWidth, height: clientHeight });
+    }
 
     // Resize observer for dynamic adjustments
     const resizeObserver = new ResizeObserver((entries) => {
@@ -751,7 +774,10 @@ function ArchitectureVisualizer({ content }: { content: string }) {
       }
     });
 
-    resizeObserver.observe(containerRef.current);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => resizeObserver.disconnect();
   }, []);
 
@@ -785,8 +811,10 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
             // Measure widths
             ctx.font = `600 ${fontSize}px Inter, sans-serif`;
+
             const textWidth = ctx.measureText(label).width;
             ctx.font = `bold ${typeFontSize}px Inter, sans-serif`;
+
             const typeWidth = ctx.measureText(typeText).width;
 
             // Card dimensions
@@ -860,11 +888,17 @@ function ArchitectureVisualizer({ content }: { content: string }) {
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link: any, ctx, globalScale) => {
             const label = link.label;
-            if (!label || globalScale < 0.8) return;
+
+            if (!label || globalScale < 0.8) {
+              return;
+            }
 
             const start = link.source;
             const end = link.target;
-            if (typeof start !== 'object' || typeof end !== 'object') return;
+
+            if (typeof start !== 'object' || typeof end !== 'object') {
+              return;
+            }
 
             const textPos = {
               x: start.x + (end.x - start.x) / 2,
@@ -873,8 +907,14 @@ function ArchitectureVisualizer({ content }: { content: string }) {
 
             const relLink = { x: end.x - start.x, y: end.y - start.y };
             let textAngle = Math.atan2(relLink.y, relLink.x);
-            if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-            if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+
+            if (textAngle > Math.PI / 2) {
+              textAngle = -(Math.PI - textAngle);
+            }
+
+            if (textAngle < -Math.PI / 2) {
+              textAngle = -(-Math.PI - textAngle);
+            }
 
             const fontSize = Math.max(9 / globalScale, 2);
             ctx.font = `500 ${fontSize}px Inter, sans-serif`;
@@ -932,6 +972,7 @@ function HealthReport({ content, onNavigate }: { content: string; onNavigate?: (
           ? 'text-yellow-400'
           : 'text-red-400';
   const ring = score == null ? '#374151' : score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+
   return (
     <div className="space-y-6">
       {score != null && (
@@ -978,19 +1019,35 @@ function FileContent({
   content: string;
   onNavigate?: (tab: string) => void;
 }) {
-  if (filename === 'api-descriptions.json') return <ApiExplorer content={content} />;
-  if (filename === 'doc_snapshot.json') return <SnapshotDashboard content={content} />;
-  if (filename === 'architecture-graph.json' || filename.endsWith('-graph.json'))
+  if (filename === 'api-descriptions.json') {
+    return <ApiExplorer content={content} />;
+  }
+
+  if (filename === 'doc_snapshot.json') {
+    return <SnapshotDashboard content={content} />;
+  }
+
+  if (filename === 'architecture-graph.json' || filename.endsWith('-graph.json')) {
     return <ArchitectureVisualizer content={content} />;
-  if (filename === 'tree.json') return <TreeVisualizer content={content} />;
-  if (filename === 'tree.txt')
+  }
+
+  if (filename === 'tree.json') {
+    return <TreeVisualizer content={content} />;
+  }
+
+  if (filename === 'tree.txt') {
     return (
       <div className="bg-[#0a0a0a] rounded-lg border border-gray-700 p-5">
         <pre className="text-xs font-mono text-gray-300 whitespace-pre leading-relaxed">{content}</pre>
       </div>
     );
-  if (filename === 'documentation-health.md') return <HealthReport content={content} onNavigate={onNavigate} />;
-  if (filename.endsWith('.json'))
+  }
+
+  if (filename === 'documentation-health.md') {
+    return <HealthReport content={content} onNavigate={onNavigate} />;
+  }
+
+  if (filename.endsWith('.json')) {
     return (
       <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed p-5 bg-[#0a0a0a] rounded-lg border border-gray-700">
         {(() => {
@@ -1002,6 +1059,8 @@ function FileContent({
         })()}
       </pre>
     );
+  }
+
   return <MarkdownRenderer content={content} onNavigate={onNavigate} />;
 }
 
@@ -1022,11 +1081,14 @@ export function LivingWiki() {
 
   useEffect(() => {
     const recent = (repositoryHistoryStore as any).getRecentRepositories?.(1);
+
     if (recent?.length > 0) {
       const url = recent[0].url;
       setRepoUrl(url);
+
       try {
         const saved = sessionStorage.getItem('livingwiki:' + url);
+
         if (saved) {
           setDocFiles(JSON.parse(saved));
           setActiveTab('__dashboard__');
@@ -1039,6 +1101,7 @@ export function LivingWiki() {
 
   useEffect(() => {
     const ep = Object.values(providers).find((p) => p.settings.enabled);
+
     if (ep) {
       const m = ep.settings.selectedModel || ep.staticModels?.[0]?.name || '';
       setProviderLabel(`${ep.name}${m ? ': ' + m : ''}`);
@@ -1047,7 +1110,11 @@ export function LivingWiki() {
 
   const getProvider = () => {
     const ep = Object.values(providers).find((p) => p.settings.enabled);
-    if (!ep) return undefined;
+
+    if (!ep) {
+      return undefined;
+    }
+
     return {
       name: ep.name,
       model: ep.settings.selectedModel || ep.staticModels?.[0]?.name || '',
@@ -1061,18 +1128,24 @@ export function LivingWiki() {
       toast.error('No repository loaded.');
       return;
     }
+
     const prov = getProvider();
+
     if (!prov) {
       toast.error('No AI provider enabled.');
       return;
     }
+
     setLoading(true);
     setError(null);
     setDocFiles(null);
+
     try {
       toast.info(`Architecting wiki with ${prov.name}...`);
+
       const res = await mcpGetWiki(repoUrl, prov);
       let files: DocFiles = {};
+
       if (res.format === 'multiple-files' && typeof res.content === 'object') {
         files = res.content as DocFiles;
       } else if (typeof res.content === 'string') {
@@ -1083,6 +1156,7 @@ export function LivingWiki() {
 
       setDocFiles(files);
       setActiveTab('__dashboard__');
+
       try {
         sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(files));
       } catch {
@@ -1099,7 +1173,10 @@ export function LivingWiki() {
   };
 
   const downloadAll = () => {
-    if (!docFiles) return;
+    if (!docFiles) {
+      return;
+    }
+
     Object.entries(docFiles).forEach(([n, c]) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([c], { type: 'text/plain' }));
@@ -1110,11 +1187,18 @@ export function LivingWiki() {
   };
 
   const exportPdf = useCallback(() => {
-    if (!docFiles) return;
+    if (!docFiles) {
+      return;
+    }
+
     const content = activeTab === '__dashboard__' ? '' : docFiles[activeTab] || '';
     const title = activeTab === '__dashboard__' ? 'Documentation Overview' : activeTab;
     const w = window.open('', '_blank');
-    if (!w) return;
+
+    if (!w) {
+      return;
+    }
+
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:860px;margin:40px auto;padding:0 24px;color:#1a1a1a;line-height:1.7}
     h1{font-size:2rem;border-bottom:3px solid #10b981;padding-bottom:12px}h2{font-size:1.4rem;color:#059669;margin-top:2rem}h3{font-size:1.1rem;color:#374151}
@@ -1186,7 +1270,11 @@ export function LivingWiki() {
               const groupTabs = KNOWN_TABS.filter(
                 (t) => t.group === gid && (t.key === '__dashboard__' || (docFiles && docFiles[t.key])),
               );
-              if (groupTabs.length === 0) return null;
+
+              if (groupTabs.length === 0) {
+                return null;
+              }
+
               return (
                 <div key={gid}>
                   <h4 className="px-3 text-[10px] font-bold text-gray-600 uppercase tracking-[2px] mb-3">{label}</h4>
@@ -1242,11 +1330,13 @@ export function LivingWiki() {
                       onDiagramGenerated={(fileName, content) => {
                         setDocFiles((prev) => {
                           const newFiles = { ...prev, [fileName]: content };
+
                           try {
                             sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles));
                           } catch {
                             /* ignore */
                           }
+
                           return newFiles;
                         });
                         setActiveTab(fileName);
@@ -1294,7 +1384,10 @@ export function LivingWiki() {
                       {activeTab.endsWith('-graph.json') && (
                         <button
                           onClick={() => {
-                            if (!docFiles) return;
+                            if (!docFiles) {
+                              return;
+                            }
+
                             const currentReadme =
                               docFiles['README.md'] ||
                               '# System Documentation\n\nThis project contains auto-generated documentation.';
@@ -1305,6 +1398,7 @@ export function LivingWiki() {
                               .join(' ');
 
                             const diagramLink = `[View ${title} Interactive Graph](${activeTab})`;
+
                             if (currentReadme.includes(diagramLink) || currentReadme.includes(`](${activeTab})`)) {
                               toast.info('Diagram is already in the README!');
                               return;
@@ -1315,6 +1409,7 @@ export function LivingWiki() {
 
                             const newFiles = { ...docFiles, 'README.md': updatedReadme };
                             setDocFiles(newFiles);
+
                             try {
                               sessionStorage.setItem('livingwiki:' + repoUrl, JSON.stringify(newFiles));
                             } catch {

@@ -6,13 +6,12 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import type { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
+import type { NodeObject, LinkObject } from 'react-force-graph-2d';
 import ForceGraph2D from 'react-force-graph-2d';
+
 // WebSocket libraries will be imported dynamically to prevent SSR/Hydration issues
 import type { Client, StompConfig, IMessage } from '@stomp/stompjs';
-import type SockJS from 'sockjs-client';
 import { Button } from '~/components/ui/Button';
-import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
 import { Activity, Pause, Play, Download, RefreshCw, Wifi, WifiOff, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -98,9 +97,11 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
   // Helper: Extract repo ID from URL
   const extractRepoId = (url: string): string => {
     const parts = url.replace(/\.git$/, '').split('/');
+
     if (parts.length >= 2) {
       return `${parts[parts.length - 2]}-${parts[parts.length - 1]}`;
     }
+
     return url.replace(/[^a-zA-Z0-9-]/g, '-');
   };
 
@@ -112,10 +113,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
     }
 
     // Dynamic imports for browser-only WebSocket libraries
-    const [{ Client }, { default: SockJS }] = await Promise.all([
-      import('@stomp/stompjs'),
-      import('sockjs-client'),
-    ]);
+    const [{ Client }, { default: sockJS }] = await Promise.all([import('@stomp/stompjs'), import('sockjs-client')]);
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
     const wsUrl = backendUrl.replace(/^http/, 'ws').replace(/\/api$/, '');
@@ -125,7 +123,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
     setStats((prev) => ({ ...prev, status: 'connecting' }));
 
     const stompConfig: StompConfig = {
-      webSocketFactory: () => new SockJS(`${wsUrl}/ws-graph`) as any,
+      webSocketFactory: () => new sockJS(`${wsUrl}/ws-graph`) as any,
       debug: (str) => console.log('[STOMP]', str),
       reconnectDelay: Math.min(1000 * Math.pow(2, connectionAttemptsRef.current), 30000),
       heartbeatIncoming: 4000,
@@ -192,6 +190,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
             }));
             updateBufferRef.current.nodes.push(...newNodes);
           }
+
           if (update.edges) {
             const newLinks: GraphLink[] = update.edges.map((e) => ({
               source: e.source,
@@ -201,6 +200,7 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
             }));
             updateBufferRef.current.links.push(...newLinks);
           }
+
           break;
 
         case 'complete':
@@ -238,16 +238,19 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
           // Merge nodes
           const mergedNodeMap = new Map(prevData.nodes.map((n) => [n.id, n]));
           buffer.nodes.forEach((n) => mergedNodeMap.set(n.id, n));
+
           const mergedNodes = Array.from(mergedNodeMap.values());
 
           // Merge links
           const linkSet = new Set(prevData.links.map((l) => `${l.source}-${l.target}`));
           const newLinks = buffer.links.filter((l) => {
             const key = `${l.source}-${l.target}`;
+
             if (!linkSet.has(key)) {
               linkSet.add(key);
               return true;
             }
+
             return false;
           });
 
@@ -284,9 +287,11 @@ export function RealTimeGraphPage({ onBack, repoUrl }: Props) {
 
     return () => {
       console.log('[RealTimeGraph] Cleaning up WebSocket connection');
+
       if (stompClientRef.current) {
         stompClientRef.current.deactivate();
       }
+
       if (mergeIntervalRef.current) {
         clearInterval(mergeIntervalRef.current);
       }

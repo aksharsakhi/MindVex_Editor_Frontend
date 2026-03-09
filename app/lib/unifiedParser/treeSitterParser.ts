@@ -237,7 +237,10 @@ export class TreeSitterParser {
   private _functionCounter = 0;
   private _classCounter = 0;
 
-  private constructor() {}
+  // Private constructor for singleton pattern
+  private constructor() {
+    // Intentionally empty - initialization done in getInstance
+  }
 
   static getInstance(): TreeSitterParser {
     if (!TreeSitterParser._instance) {

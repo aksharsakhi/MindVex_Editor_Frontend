@@ -8,7 +8,6 @@ import { SettingsButton, HelpButton } from '~/components/ui/SettingsButton';
 import { Button } from '~/components/ui/Button';
 import { db, deleteById, getAll, chatId, type ChatHistoryItem, useChatHistory } from '~/lib/persistence';
 import { cubicEasingFn } from '~/utils/easings';
-import { binDates } from './date-binning';
 import { useSearchFilter } from '~/lib/hooks/useSearchFilter';
 import { classNames } from '~/utils/classNames';
 import { useStore } from '@nanostores/react';
@@ -17,7 +16,6 @@ import { RepositoryHistory } from './RepositoryHistory';
 import { ChatHistory } from './ChatHistory';
 import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { importFolderToWorkbench } from '~/utils/workbenchImport';
 import { WORK_DIR } from '~/utils/constants';
 
 const menuVariants = {

@@ -11,14 +11,11 @@ import {
   type OnScrollCallback as OnEditorScroll,
 } from '~/components/editor/codemirror/CodeMirrorEditor';
 import { PanelHeader } from '~/components/ui/PanelHeader';
-import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
-import type { FileMap } from '~/lib/stores/files';
 import type { FileHistory } from '~/types/actions';
 import { themeStore } from '~/lib/stores/theme';
 import { WORK_DIR } from '~/utils/constants';
 import { renderLogger } from '~/utils/logger';
 import { isMobile } from '~/utils/mobile';
-import { FileBreadcrumb } from './FileBreadcrumb';
 import { FileTree } from './FileTree';
 import { DEFAULT_TERMINAL_SIZE, TerminalTabs } from './terminal/TerminalTabs';
 import { workbenchStore } from '~/lib/stores/workbench';

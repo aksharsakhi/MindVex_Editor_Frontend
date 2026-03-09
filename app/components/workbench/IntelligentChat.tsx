@@ -17,10 +17,9 @@ import {
   ParseModeStatus,
   type LLMAnalysis,
 } from '~/lib/unifiedParser';
-import { Button } from '~/components/ui/Button';
 import { Card } from '~/components/ui/Card';
 import { Badge } from '~/components/ui/Badge';
-import { Brain, Zap, Info, RefreshCw, Download, Send, Trash2, MessageSquare, Sparkles } from 'lucide-react';
+import { Brain, Zap, Info, Send, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface ChatMessage {
@@ -67,7 +66,9 @@ export function IntelligentChat() {
 
       // ─── Provider & Model Selection ─────────────────────────────────────────────
 
-      const activeProvider = selectedProviderName ? providers[selectedProviderName] : Object.values(providers).find(p => p.settings.enabled) || null;
+      const activeProvider = selectedProviderName
+        ? providers[selectedProviderName]
+        : Object.values(providers).find((p) => p.settings.enabled) || null;
 
       // Handle Parser-Only Mode (Keyword Search)
       if (parseMode.type === 'parser-only') {
@@ -137,13 +138,13 @@ export function IntelligentChat() {
 
         const providerInfo = activeProvider
           ? {
-            name: activeProvider.name,
-            model:
-              activeProvider.settings.selectedModel ||
-              (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
-            apiKey: activeProvider.settings.apiKey,
-            baseUrl: activeProvider.settings.baseUrl,
-          }
+              name: activeProvider.name,
+              model:
+                activeProvider.settings.selectedModel ||
+                (activeProvider.staticModels && activeProvider.staticModels[0]?.name),
+              apiKey: activeProvider.settings.apiKey,
+              baseUrl: activeProvider.settings.baseUrl,
+            }
           : undefined;
 
         const response = await mcpChat(repoUrl, input, history, providerInfo);
@@ -221,10 +222,11 @@ export function IntelligentChat() {
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div
-                className={`rounded-2xl px-5 py-3 text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-orange-500/10 border border-orange-500/20 text-gray-200'
-                  : 'bg-[#111] border border-white/5 text-gray-300'
-                  }`}
+                className={`rounded-2xl px-5 py-3 text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-orange-500/10 border border-orange-500/20 text-gray-200'
+                    : 'bg-[#111] border border-white/5 text-gray-300'
+                }`}
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
                 {msg.model && msg.role === 'assistant' && (

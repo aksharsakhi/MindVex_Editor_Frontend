@@ -108,7 +108,7 @@ export function HoverProvider({ repoUrl, filePath, children, editorViewRef }: Ho
     const el = containerRef.current;
 
     if (!el) {
-      return;
+      return () => {};
     }
 
     el.addEventListener('mousemove', handleMouseMove);

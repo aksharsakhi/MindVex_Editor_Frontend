@@ -15,7 +15,6 @@ import SetupGuide from './SetupGuide';
 import StatusDashboard from './StatusDashboard';
 import ProviderCard from './ProviderCard';
 import ModelCard from './ModelCard';
-import { OLLAMA_API_URL } from './types';
 import type { OllamaModel, LMStudioModel } from './types';
 import { Cpu, Server, BookOpen, Activity, PackageOpen, Monitor, Loader2, RotateCw, ExternalLink } from 'lucide-react';
 
@@ -244,13 +243,13 @@ export default function LocalProvidersTab() {
                 current.map((m) =>
                   m.name === modelName
                     ? {
-                      ...m,
-                      progress: {
-                        current: data.completed,
-                        total: data.total,
-                        status: data.status,
-                      },
-                    }
+                        ...m,
+                        progress: {
+                          current: data.completed,
+                          total: data.total,
+                          status: data.status,
+                        },
+                      }
                     : m,
                 ),
               );

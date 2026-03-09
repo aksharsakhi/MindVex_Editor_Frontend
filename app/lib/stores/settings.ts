@@ -1,7 +1,7 @@
 import { atom, map } from 'nanostores';
 import { PROVIDER_LIST } from '~/utils/constants';
 import type { IProviderConfig, IProviderSetting } from '~/types/model';
-import type { TabVisibilityConfig, TabWindowConfig, UserTabConfig } from '~/components/@settings/core/types';
+import type { TabWindowConfig, UserTabConfig } from '~/components/@settings/core/types';
 import { DEFAULT_TAB_CONFIG } from '~/components/@settings/core/constants';
 import { toggleTheme } from './theme';
 import { create } from 'zustand';
@@ -132,9 +132,13 @@ const autoEnableConfiguredProviders = async () => {
 
     // Track which providers were auto-enabled to avoid overriding user preferences
     let previouslyAutoEnabled: string[] = [];
+
     try {
       previouslyAutoEnabled = autoEnabledProviders ? JSON.parse(autoEnabledProviders) : [];
-      if (!Array.isArray(previouslyAutoEnabled)) previouslyAutoEnabled = [];
+
+      if (!Array.isArray(previouslyAutoEnabled)) {
+        previouslyAutoEnabled = [];
+      }
     } catch (e) {
       console.warn('Failed to parse auto-enabled providers from localStorage', e);
       previouslyAutoEnabled = [];
@@ -263,6 +267,7 @@ export const activeProviderStore = atom<string | null>(INITIAL_ACTIVE_PROVIDER);
 // Update helper for active provider
 export const setActiveProvider = (name: string | null) => {
   activeProviderStore.set(name);
+
   if (isBrowser) {
     if (name) {
       localStorage.setItem('active_provider', name);

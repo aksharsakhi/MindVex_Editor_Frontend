@@ -54,6 +54,7 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
         badge: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400',
       };
     }
+
     if (log.category === 'api') {
       return {
         icon: 'i-ph:cloud',
@@ -63,6 +64,7 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
         badge: 'text-blue-600 bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400',
       };
     }
+
     switch (log.level) {
       case 'error':
         return {
@@ -104,9 +106,23 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
       return (
         <div className="flex flex-col gap-2 mt-2">
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            {details.model && <span>Model: <strong>{details.model}</strong></span>}
-            {details.totalTokens && <><span>•</span><span>Tokens: {details.totalTokens}</span></>}
-            {details.duration && <><span>•</span><span>{details.duration}ms</span></>}
+            {details.model && (
+              <span>
+                Model: <strong>{details.model}</strong>
+              </span>
+            )}
+            {details.totalTokens && (
+              <>
+                <span>•</span>
+                <span>Tokens: {details.totalTokens}</span>
+              </>
+            )}
+            {details.duration && (
+              <>
+                <span>•</span>
+                <span>{details.duration}ms</span>
+              </>
+            )}
           </div>
           {details.prompt && (
             <pre className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-[#141414] rounded-lg p-3 whitespace-pre-wrap border border-[#E5E5E5] dark:border-[#1A1A1A] max-h-32 overflow-auto">
@@ -116,17 +132,32 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
         </div>
       );
     }
+
     if (log.category === 'api') {
       return (
         <div className="flex flex-col gap-2 mt-2">
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             {details.method && (
-              <span className={details.method === 'GET' ? 'text-green-500 font-mono font-bold' : 'text-blue-500 font-mono font-bold'}>
+              <span
+                className={
+                  details.method === 'GET' ? 'text-green-500 font-mono font-bold' : 'text-blue-500 font-mono font-bold'
+                }
+              >
                 {details.method}
               </span>
             )}
-            {details.statusCode && <><span>•</span><span>Status: {details.statusCode}</span></>}
-            {details.duration && <><span>•</span><span>{details.duration}ms</span></>}
+            {details.statusCode && (
+              <>
+                <span>•</span>
+                <span>Status: {details.statusCode}</span>
+              </>
+            )}
+            {details.duration && (
+              <>
+                <span>•</span>
+                <span>{details.duration}ms</span>
+              </>
+            )}
           </div>
           {details.url && (
             <div className="text-xs text-gray-500 dark:text-gray-400 font-mono break-all bg-white dark:bg-[#141414] rounded-lg px-3 py-2 border border-[#E5E5E5] dark:border-[#1A1A1A]">
@@ -136,6 +167,7 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
         </div>
       );
     }
+
     return (
       <pre className="text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-[#141414] rounded-lg p-3 whitespace-pre-wrap border border-[#E5E5E5] dark:border-[#1A1A1A] max-h-40 overflow-auto mt-2">
         {JSON.stringify(details, null, 2)}
@@ -158,7 +190,12 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className={classNames('w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5', 'bg-white/60 dark:bg-white/5')}>
+          <div
+            className={classNames(
+              'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+              'bg-white/60 dark:bg-white/5',
+            )}
+          >
             <span className={classNames('text-base', style.icon, style.color)} />
           </div>
           <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -169,7 +206,12 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
                   onClick={() => setLocalExpanded(!localExpanded)}
                   className="text-[11px] text-purple-500 hover:text-purple-600 dark:hover:text-purple-300 transition-colors self-start flex items-center gap-1"
                 >
-                  <span className={classNames('text-xs transition-transform', localExpanded ? 'i-ph:caret-down' : 'i-ph:caret-right')} />
+                  <span
+                    className={classNames(
+                      'text-xs transition-transform',
+                      localExpanded ? 'i-ph:caret-down' : 'i-ph:caret-right',
+                    )}
+                  />
                   {localExpanded ? 'Hide' : 'Show'} Details
                 </button>
                 <AnimatePresence>
@@ -187,12 +229,18 @@ const LogEntryItem = ({ log, isExpanded: forceExpanded, use24Hour, showTimestamp
               </>
             )}
             <div className="flex items-center gap-2 mt-1">
-              <span className={classNames('px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide', style.badge)}>
+              <span
+                className={classNames(
+                  'px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide',
+                  style.badge,
+                )}
+              >
                 {log.level}
               </span>
               {log.category && (
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                  {log.category}{log.subCategory ? ` › ${log.subCategory}` : ''}
+                  {log.category}
+                  {log.subCategory ? ` › ${log.subCategory}` : ''}
                 </span>
               )}
             </div>
@@ -235,11 +283,16 @@ export function EventLogsTab() {
       .filter((log) => {
         if (selectedLevel !== 'all') {
           const matchesType = log.category === selectedLevel || log.level === selectedLevel;
-          if (!matchesType) return false;
+
+          if (!matchesType) {
+            return false;
+          }
         }
+
         if (searchQuery) {
           return (log.message || '').toLowerCase().includes(searchQuery.toLowerCase());
         }
+
         return true;
       })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -258,6 +311,7 @@ export function EventLogsTab() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
+
     try {
       await logStore.refreshLogs();
       toast.success('Logs refreshed');
@@ -286,7 +340,9 @@ export function EventLogsTab() {
       };
       downloadFile(JSON.stringify(data, null, 2), `mindvex-logs-${Date.now()}.json`, 'application/json');
       toast.success('Logs exported as JSON');
-    } catch { toast.error('Failed to export logs'); }
+    } catch {
+      toast.error('Failed to export logs');
+    }
   }, [filteredLogs, selectedLevel, searchQuery]);
 
   const exportAsCSV = useCallback(() => {
@@ -304,7 +360,9 @@ export function EventLogsTab() {
         .join('\n');
       downloadFile(csvContent, `mindvex-logs-${Date.now()}.csv`, 'text/csv;charset=utf-8;');
       toast.success('Logs exported as CSV');
-    } catch { toast.error('Failed to export logs'); }
+    } catch {
+      toast.error('Failed to export logs');
+    }
   }, [filteredLogs]);
 
   const exportAsText = useCallback(() => {
@@ -312,14 +370,23 @@ export function EventLogsTab() {
       const text = filteredLogs
         .map((log) => {
           let line = `[${new Date(log.timestamp).toLocaleString()}] ${log.level.toUpperCase()}: ${log.message}`;
-          if (log.category) line += ` (${log.category})`;
-          if (log.details) line += `\n  Details: ${JSON.stringify(log.details)}`;
+
+          if (log.category) {
+            line += ` (${log.category})`;
+          }
+
+          if (log.details) {
+            line += `\n  Details: ${JSON.stringify(log.details)}`;
+          }
+
           return line;
         })
         .join('\n' + '─'.repeat(80) + '\n');
       downloadFile(text, `mindvex-logs-${Date.now()}.txt`, 'text/plain');
       toast.success('Logs exported as text');
-    } catch { toast.error('Failed to export logs'); }
+    } catch {
+      toast.error('Failed to export logs');
+    }
   }, [filteredLogs]);
 
   const exportFormats = [
@@ -331,11 +398,7 @@ export function EventLogsTab() {
   return (
     <div className="flex h-full flex-col gap-5">
       {/* Stats Row */}
-      <motion.div
-        className="grid grid-cols-5 gap-2.5"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div className="grid grid-cols-5 gap-2.5" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         {[
           { label: 'Total', value: stats.total, icon: 'i-ph:list-bullets', color: 'purple' },
           { label: 'Errors', value: stats.errors, icon: 'i-ph:warning-circle', color: 'red' },
@@ -364,14 +427,19 @@ export function EventLogsTab() {
           {/* Level Filter */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className={classNames(
-                'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
-                'bg-[#FAFAFA] dark:bg-[#0A0A0A]',
-                'border border-[#E5E5E5] dark:border-[#1A1A1A]',
-                'hover:border-purple-300 dark:hover:border-purple-800/40',
-                'text-gray-900 dark:text-white transition-all duration-200',
-              )}>
-                <span className={classNames('text-base', selectedLevelOption?.icon || 'i-ph:funnel')} style={{ color: selectedLevelOption?.color }} />
+              <button
+                className={classNames(
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+                  'bg-[#FAFAFA] dark:bg-[#0A0A0A]',
+                  'border border-[#E5E5E5] dark:border-[#1A1A1A]',
+                  'hover:border-purple-300 dark:hover:border-purple-800/40',
+                  'text-gray-900 dark:text-white transition-all duration-200',
+                )}
+              >
+                <span
+                  className={classNames('text-base', selectedLevelOption?.icon || 'i-ph:funnel')}
+                  style={{ color: selectedLevelOption?.color }}
+                />
                 <span>{selectedLevelOption?.label || 'All Types'}</span>
                 <span className="i-ph:caret-down text-sm text-gray-400" />
               </button>
@@ -383,7 +451,8 @@ export function EventLogsTab() {
                   'bg-white dark:bg-[#0A0A0A] border border-[#E5E5E5] dark:border-[#1A1A1A]',
                   'animate-in fade-in-0 zoom-in-95',
                 )}
-                sideOffset={5} align="start"
+                sideOffset={5}
+                align="start"
               >
                 {logLevelOptions.map((option) => (
                   <DropdownMenu.Item
@@ -457,19 +526,23 @@ export function EventLogsTab() {
               'text-gray-900 dark:text-white transition-all duration-200',
             )}
           >
-            <span className={classNames('i-ph:arrows-clockwise text-sm text-gray-400', isRefreshing && 'animate-spin')} />
+            <span
+              className={classNames('i-ph:arrows-clockwise text-sm text-gray-400', isRefreshing && 'animate-spin')}
+            />
             Refresh
           </button>
 
           {/* Export Dropdown */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button className={classNames(
-                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm',
-                'bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E5] dark:border-[#1A1A1A]',
-                'hover:border-purple-300 dark:hover:border-purple-800/40',
-                'text-gray-900 dark:text-white transition-all duration-200',
-              )}>
+              <button
+                className={classNames(
+                  'flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm',
+                  'bg-[#FAFAFA] dark:bg-[#0A0A0A] border border-[#E5E5E5] dark:border-[#1A1A1A]',
+                  'hover:border-purple-300 dark:hover:border-purple-800/40',
+                  'text-gray-900 dark:text-white transition-all duration-200',
+                )}
+              >
                 <span className="i-ph:download text-sm text-gray-400" />
                 Export
               </button>
@@ -481,7 +554,8 @@ export function EventLogsTab() {
                   'bg-white dark:bg-[#0A0A0A] border border-[#E5E5E5] dark:border-[#1A1A1A]',
                   'animate-in fade-in-0 zoom-in-95',
                 )}
-                sideOffset={5} align="end"
+                sideOffset={5}
+                align="end"
               >
                 {exportFormats.map((fmt) => (
                   <DropdownMenu.Item

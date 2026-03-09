@@ -6,8 +6,7 @@ import { workbenchStore } from '~/lib/stores/workbench';
 import { useStore } from '@nanostores/react';
 import { Dropdown, DropdownItem } from '~/components/ui/Dropdown';
 import { Button } from '~/components/ui/Button';
-import { ChevronDown, Bot, Sparkles } from 'lucide-react';
-import { Badge } from '~/components/ui/Badge';
+import { ChevronDown, Sparkles } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -88,31 +87,37 @@ export function ChatPanel() {
 
       const providerInfo = activeProvider
         ? {
-          name: activeProvider.name,
-          model: activeModel || undefined,
-          apiKey: activeProvider.settings.apiKey,
-          baseUrl: activeProvider.settings.baseUrl,
-        }
+            name: activeProvider.name,
+            model: activeModel || undefined,
+            apiKey: activeProvider.settings.apiKey,
+            baseUrl: activeProvider.settings.baseUrl,
+          }
         : undefined;
 
       if (query.includes('wiki') || query.startsWith('generate wiki')) {
         // Wiki generation via dedicated endpoint
         const wiki = await mcpGetWiki(repoUrl, providerInfo);
+
         if (wiki.format === 'multiple-files' && typeof wiki.content === 'object') {
           let msg = `Generated documentation files:\n`;
+
           for (const [filename, fileContent] of Object.entries(wiki.content)) {
             try {
               await workbenchStore.createFile(`/${filename}`, fileContent as string);
               msg += `- ${filename}\n`;
-            } catch (e) {
+            } catch {
               msg += `- ${filename} (Failed)\n`;
             }
           }
+
           const allFiles = workbenchStore.files.get();
           workbenchStore.setDocuments(allFiles, false);
           setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
         } else {
-          setMessages((prev) => [...prev, { role: 'assistant', content: typeof wiki.content === 'string' ? wiki.content : "Generated successfully." }]);
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: typeof wiki.content === 'string' ? wiki.content : 'Generated successfully.' },
+          ]);
         }
       } else if (query.startsWith('describe module')) {
         // Module description via dedicated endpoint
@@ -239,10 +244,11 @@ export function ChatPanel() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${msg.role === 'user'
-                ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
-                : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
-                }`}
+              className={`max-w-[90%] rounded-lg px-3 py-2 text-xs leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-orange-500/15 border border-orange-500/20 text-mindvex-elements-textPrimary'
+                  : 'bg-mindvex-elements-background-depth-2 border border-mindvex-elements-borderColor text-mindvex-elements-textSecondary'
+              }`}
             >
               <div className="whitespace-pre-wrap break-words">{msg.content}</div>
               {msg.model && msg.role === 'assistant' && (

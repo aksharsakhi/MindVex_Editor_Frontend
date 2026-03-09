@@ -88,9 +88,7 @@ const FeatureCard = memo(
       <div
         className={classNames(
           'h-0.5 w-full transition-all duration-300',
-          feature.enabled
-            ? 'bg-gradient-to-r from-purple-500 via-purple-400 to-indigo-400'
-            : 'bg-transparent',
+          feature.enabled ? 'bg-gradient-to-r from-purple-500 via-purple-400 to-indigo-400' : 'bg-transparent',
         )}
       />
     </motion.div>
@@ -175,11 +173,25 @@ export default function FeaturesTab() {
 
   // Enable features by default on first load
   React.useEffect(() => {
-    if (isLatestBranch === undefined) enableLatestBranch(false);
-    if (contextOptimizationEnabled === undefined) enableContextOptimization(true);
-    if (autoSelectTemplate === undefined) setAutoSelectTemplate(true);
-    if (promptId === undefined) setPromptId('default');
-    if (eventLogs === undefined) setEventLogs(true);
+    if (isLatestBranch === undefined) {
+      enableLatestBranch(false);
+    }
+
+    if (contextOptimizationEnabled === undefined) {
+      enableContextOptimization(true);
+    }
+
+    if (autoSelectTemplate === undefined) {
+      setAutoSelectTemplate(true);
+    }
+
+    if (promptId === undefined) {
+      setPromptId('default');
+    }
+
+    if (eventLogs === undefined) {
+      setEventLogs(true);
+    }
   }, []);
 
   const handleToggleFeature = useCallback(

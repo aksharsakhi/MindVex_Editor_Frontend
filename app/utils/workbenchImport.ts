@@ -341,7 +341,7 @@ export const importGitRepoToWorkbench = async (repoUrl: string, gitClone: any, a
   const loadingToast = toast.loading(`Cloning repository ${repoUrl} to workbench...`);
 
   try {
-    const { workdir: _workdir, data } = await gitClone(repoUrl);
+    const { data } = await gitClone(repoUrl);
 
     // Prepare files data for storage
     const filesData = [];
