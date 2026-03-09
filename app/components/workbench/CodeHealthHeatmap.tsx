@@ -663,6 +663,13 @@ ${fileContent}`;
                 try {
                     const body = await e.text();
                     errorMessage = `HTTP ${e.status}: ${body || e.statusText}`;
+
+                    // Check for permission specific errors
+                    if (e.status === 404 || e.status === 403) {
+                        if (repoUrl.includes('github.com')) {
+                            toast.warning("Auth Hint: You might not have write permissions to this repository. Ask the owner for collaborator access.", { autoClose: 10000 });
+                        }
+                    }
                 } catch {
                     errorMessage = `HTTP ${e.status}: ${e.statusText}`;
                 }
