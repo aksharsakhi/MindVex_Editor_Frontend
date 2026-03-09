@@ -26,8 +26,8 @@ export function Header() {
         })}
       >
         <div className="flex items-center gap-2 z-logo text-mindvex-elements-textPrimary cursor-pointer">
-          <div className="i-ph:sidebar-simple-duotone text-xl" />
-          <Link to="/" className="text-2xl font-semibold text-accent flex items-center">
+          <Link to="/" className="text-2xl font-semibold text-accent flex items-center gap-2">
+            <img src="/icons/CodeNexus-logo.png" alt="CodeNexus Logo" className="w-8 h-8 object-contain" />
             <span className="font-bold text-xl text-mindvex-elements-textPrimary">CodeNexus</span>
           </Link>
         </div>
