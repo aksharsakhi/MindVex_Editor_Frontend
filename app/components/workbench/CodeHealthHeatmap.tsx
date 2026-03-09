@@ -98,7 +98,10 @@ export function CodeHealthHeatmap() {
             if (filePath.endsWith('.tsx') || filePath.endsWith('.java')) coverage = Math.floor(40 + randomVal * 60);
             if (filePath.includes('config') || filePath.includes('types')) coverage = 100;
 
-            const loc = Math.max(10, Math.floor(seededRandom(filePath + 'loc') * 2000));
+            const fileEntry = filesMap[filePath];
+            const content = fileEntry?.type === 'file' ? (fileEntry as any).content || '' : '';
+            const actualLoc = content.split('\n').length;
+            const loc = Math.max(actualLoc, 10);
             const complexity = Math.floor(seededRandom(filePath + 'cmp') * 100);
             const techDebtScore = Math.floor(((100 - coverage) * 0.4) + (complexity * 0.6));
 
@@ -559,6 +562,13 @@ ${fileContent}`;
             let fixedCode = response.reply.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim();
 
             toast.info("Fix generated. Syncing with GitHub API...");
+
+            const isGithub = repoUrl.includes('github.com');
+            if (!isGithub) {
+                toast.warning("Auto-fix only support GitHub repositories. Please apply the fix manually.");
+                setIsDone(true); // Still marked as done so user can see the fix
+                return;
+            }
 
             const urlObj = new URL(repoUrl);
             let path = urlObj.pathname;
