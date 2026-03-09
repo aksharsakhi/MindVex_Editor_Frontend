@@ -174,6 +174,72 @@ export default function ProfileTab() {
               />
             </div>
           </div>
+
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700/50">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+              <div className="i-ph:github-logo-fill w-5 h-5 text-gray-900 dark:text-white" />
+              GitHub Connection
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Connect your GitHub account using a <strong>Personal Access Token (classic)</strong> to push security fixes.
+              Ensure it has <code>repo</code> permissions.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Personal Access Token</label>
+                <div className="flex gap-3">
+                  <div className="relative flex-1 group">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+                      <div className="i-ph:key-fill w-4 h-4 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <input
+                      type="password"
+                      id="github-token-input"
+                      className={classNames(
+                        'w-full pl-10 pr-4 py-2 rounded-xl text-sm',
+                        'bg-white dark:bg-gray-800/50',
+                        'border border-gray-200 dark:border-gray-700/50',
+                        'text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50',
+                      )}
+                      placeholder="ghp_xxxxxxxxxxxx"
+                    />
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const input = document.getElementById('github-token-input') as HTMLInputElement;
+                      const token = input.value;
+                      if (!token) return;
+
+                      try {
+                        const jwtToken = localStorage.getItem('auth_token');
+                        const res = await fetch('/api/users/me/github-token', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${jwtToken}`
+                          },
+                          body: JSON.stringify({ token })
+                        });
+
+                        if (res.ok) {
+                          toast.success('GitHub Token linked successfully!');
+                          input.value = '';
+                        } else {
+                          toast.error('Failed to link GitHub token.');
+                        }
+                      } catch (err) {
+                        toast.error('Connection error.');
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Link Token
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

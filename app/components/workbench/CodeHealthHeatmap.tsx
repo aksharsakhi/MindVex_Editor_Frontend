@@ -15,6 +15,7 @@ import {
     ChevronDown, Sparkles
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { extractRelativePath } from '~/utils/diff';
 
 // ─── Utilities & Mock Data Generators ───────────────────────────────────────
 
@@ -98,7 +99,10 @@ export function CodeHealthHeatmap() {
             if (filePath.endsWith('.tsx') || filePath.endsWith('.java')) coverage = Math.floor(40 + randomVal * 60);
             if (filePath.includes('config') || filePath.includes('types')) coverage = 100;
 
-            const loc = Math.max(10, Math.floor(seededRandom(filePath + 'loc') * 2000));
+            const fileEntry = filesMap[filePath];
+            const content = fileEntry?.type === 'file' ? (fileEntry as any).content || '' : '';
+            const actualLoc = content.split('\n').length;
+            const loc = Math.max(actualLoc, 10);
             const complexity = Math.floor(seededRandom(filePath + 'cmp') * 100);
             const techDebtScore = Math.floor(((100 - coverage) * 0.4) + (complexity * 0.6));
 
@@ -560,6 +564,13 @@ ${fileContent}`;
 
             toast.info("Fix generated. Syncing with GitHub API...");
 
+            const isGithub = repoUrl.includes('github.com');
+            if (!isGithub) {
+                toast.warning("Auto-fix only support GitHub repositories. Please apply the fix manually.");
+                setIsDone(true); // Still marked as done so user can see the fix
+                return;
+            }
+
             const urlObj = new URL(repoUrl);
             let path = urlObj.pathname;
             if (path.startsWith('/')) path = path.substring(1);
@@ -601,18 +612,19 @@ ${fileContent}`;
             if (!createBranchRes.ok) throw createBranchRes;
 
             // 4. Get current file SHA
-            const fileRes = await fetch(`${proxyBase}/contents/${file}?ref=${defaultBranch}`, { headers: getAuthHeader() });
+            const relativeGitHubPath = extractRelativePath(file);
+            const fileRes = await fetch(`${proxyBase}/contents/${relativeGitHubPath}?ref=${defaultBranch}`, { headers: getAuthHeader() });
             if (!fileRes.ok) throw fileRes;
             const fileData: any = await fileRes.json();
             if (!fileData || !fileData.sha) throw new Error("Could not find file on GitHub remote.");
             const fileSha = fileData.sha;
 
             // 5. Update file
-            const uploadRes = await fetch(`${proxyBase}/contents/${file}`, {
+            const uploadRes = await fetch(`${proxyBase}/contents/${relativeGitHubPath}`, {
                 method: 'PUT',
                 headers: getJsonHeader(),
                 body: JSON.stringify({
-                    message: `fix: resolve ${vuln.type} (${vuln.cwe}) in ${file}`,
+                    message: `fix: resolve ${vuln.type} (${vuln.cwe}) in ${relativeGitHubPath || file.split('/').pop()}`,
                     content: btoa(unescape(encodeURIComponent(fixedCode))),
                     sha: fileSha,
                     branch: newBranch
@@ -627,7 +639,7 @@ ${fileContent}`;
                 headers: getJsonHeader(),
                 body: JSON.stringify({
                     title: `🛡️ Security Remediation: ${vuln.type} in ${file.split('/').pop()}`,
-                    body: `## Automated Security Fix Request\n\nThis Pull Request was generated automatically by **CodeNexus AI**.\n\n### Intelligence Report\n- **Vulnerability**: \`${vuln.type}\`\n- **CWE**: \`${vuln.cwe}\`\n- **Action Taken**: ${vuln.remediation}\n- **Target File**: \`${file}\`\n\n*Review the attached changes carefully to ensure stability before merging.*`,
+                    body: `## Automated Security Fix Request\n\nThis Pull Request was generated automatically by **CodeNexus AI**.\n\n### Intelligence Report\n- **Vulnerability**: \`${vuln.type}\`\n- **CWE**: \`${vuln.cwe}\`\n- **Action Taken**: ${vuln.remediation}\n- **Target File**: \`${relativeGitHubPath}\`\n\n*Review the attached changes carefully to ensure stability before merging.*`,
                     head: newBranch,
                     base: defaultBranch
                 })
