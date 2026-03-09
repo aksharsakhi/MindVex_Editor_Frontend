@@ -33,15 +33,15 @@ export function treeSitterHighlight(lang: SupportedLanguage) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet = Decoration.none;
-      private parser: any = null;
-      private tsLanguage: any = null;
-      private tree: any = null;
+      private _parser: any = null;
+      private _tsLanguage: any = null;
+      private _tree: any = null;
 
       constructor(view: EditorView) {
-        this.init(view, lang);
+        this._init(view, lang);
       }
 
-      private async init(view: EditorView, language: SupportedLanguage) {
+      private async _init(view: EditorView, language: SupportedLanguage) {
         await initParser();
 
         const tsLang = await loadTsLanguage(language);
@@ -51,27 +51,27 @@ export function treeSitterHighlight(lang: SupportedLanguage) {
         }
 
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const ParserCtor = require('web-tree-sitter') as any;
-        const parser = new ParserCtor();
+        const parserCtor = require('web-tree-sitter') as any;
+        const parser = new parserCtor();
         parser.setLanguage(tsLang);
 
-        this.parser = parser;
-        this.tsLanguage = tsLang;
+        this._parser = parser;
+        this._tsLanguage = tsLang;
 
         const source = view.state.doc.toString();
-        this.tree = parser.parse(source);
-        this.decorations = buildDecorations(this.tree, language, tsLang);
+        this._tree = parser.parse(source);
+        this.decorations = buildDecorations(this._tree, language, tsLang);
         view.update([]);
       }
 
       update(update: ViewUpdate) {
-        if (!update.docChanged || !this.parser || !this.tsLanguage) {
+        if (!update.docChanged || !this._parser || !this._tsLanguage) {
           return;
         }
 
         const source = update.state.doc.toString();
-        this.tree = this.parser.parse(source, this.tree);
-        this.decorations = buildDecorations(this.tree, lang, this.tsLanguage);
+        this._tree = this._parser.parse(source, this._tree);
+        this.decorations = buildDecorations(this._tree, lang, this._tsLanguage);
       }
     },
     { decorations: (v) => v.decorations },

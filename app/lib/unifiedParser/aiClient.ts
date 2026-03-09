@@ -35,10 +35,10 @@ const DEFAULT_MODEL = 'gpt-4o-mini';
 // ─── AI Client Implementation ──────────────────────────────────────────────────
 
 export class AIClient {
-  private defaultModel: string;
+  private _defaultModel: string;
 
   constructor(defaultModel: string = DEFAULT_MODEL) {
-    this.defaultModel = defaultModel;
+    this._defaultModel = defaultModel;
   }
 
   /**

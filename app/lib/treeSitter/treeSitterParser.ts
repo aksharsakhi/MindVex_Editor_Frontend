@@ -8,7 +8,7 @@
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const ParserModule: any = require('web-tree-sitter');
+const parserModule: any = require('web-tree-sitter');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,7 +179,7 @@ const parserInstances = new Map<SupportedLanguage, any>();
  */
 export async function initParser(): Promise<void> {
   if (parserReady) {
-    return;
+    return Promise.resolve();
   }
 
   if (initPromise) {
@@ -187,7 +187,7 @@ export async function initParser(): Promise<void> {
   }
 
   initPromise = (async () => {
-    await ParserModule.init({
+    await parserModule.init({
       locateFile(scriptName: string) {
         if (scriptName === 'tree-sitter.wasm') {
           return '/tree-sitter.wasm';
@@ -212,7 +212,7 @@ async function loadLanguage(lang: SupportedLanguage): Promise<any> {
   const url = GRAMMAR_URLS[lang];
 
   try {
-    const langObj = await ParserModule.Language.load(url);
+    const langObj = await parserModule.Language.load(url);
     languageCache.set(lang, langObj);
 
     return langObj;
@@ -234,7 +234,7 @@ export async function parse(code: string, lang: SupportedLanguage): Promise<any>
   let parser = parserInstances.get(lang);
 
   if (!parser) {
-    parser = new ParserModule();
+    parser = new parserModule();
 
     const langObj = await loadLanguage(lang);
     parser.setLanguage(langObj);

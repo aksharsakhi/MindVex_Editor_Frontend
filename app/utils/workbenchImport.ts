@@ -1,5 +1,4 @@
 import { workbenchStore } from '~/lib/stores/workbench';
-import { repositoryHistoryStore } from '~/lib/stores/repositoryHistory';
 import { toast } from 'react-toastify';
 import { MAX_FILES, isBinaryFile, shouldIncludeFile } from '~/utils/fileUtils';
 import { logStore } from '~/lib/stores/logs';
@@ -342,7 +341,7 @@ export const importGitRepoToWorkbench = async (repoUrl: string, gitClone: any, a
   const loadingToast = toast.loading(`Cloning repository ${repoUrl} to workbench...`);
 
   try {
-    const { workdir, data } = await gitClone(repoUrl);
+    const { workdir: _workdir, data } = await gitClone(repoUrl);
 
     // Prepare files data for storage
     const filesData = [];

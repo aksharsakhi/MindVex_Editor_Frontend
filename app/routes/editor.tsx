@@ -5,8 +5,6 @@ import BackgroundRays from '~/components/ui/BackgroundRays';
 import { Menu } from '~/components/sidebar/Menu.client';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { workbenchStore } from '~/lib/stores/workbench';
-import { webcontainer } from '~/lib/webcontainer';
-import { path } from '~/utils/path';
 import React from 'react';
 
 export const meta: MetaFunction = () => {
@@ -25,7 +23,7 @@ export default function EditorPage() {
         <div className="flex-1 relative min-h-0">
           <ClientOnly fallback={<div>Loading editor...</div>}>
             {() => {
-              const [showWorkbench, setShowWorkbench] = React.useState(false);
+              const [, setShowWorkbench] = React.useState(false);
 
               React.useEffect(() => {
                 // Subscribe to workbench state changes

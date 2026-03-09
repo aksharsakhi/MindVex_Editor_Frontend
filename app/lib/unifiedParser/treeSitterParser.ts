@@ -232,29 +232,29 @@ const LANGUAGE_GRAMMARS: Record<SupportedLanguage, string> = {
 
 // Singleton Tree-sitter parser implementation
 export class TreeSitterParser {
-  private static instance: TreeSitterParser;
-  private initialized = false;
-  private functionCounter = 0;
-  private classCounter = 0;
+  private static _instance: TreeSitterParser;
+  private _initialized = false;
+  private _functionCounter = 0;
+  private _classCounter = 0;
 
   private constructor() {}
 
   static getInstance(): TreeSitterParser {
-    if (!TreeSitterParser.instance) {
-      TreeSitterParser.instance = new TreeSitterParser();
+    if (!TreeSitterParser._instance) {
+      TreeSitterParser._instance = new TreeSitterParser();
     }
 
-    return TreeSitterParser.instance;
+    return TreeSitterParser._instance;
   }
 
   async initialize(): Promise<void> {
-    if (this.initialized) {
+    if (this._initialized) {
       return;
     }
 
     try {
       console.log('Tree-sitter parser initialized (mock mode)');
-      this.initialized = true;
+      this._initialized = true;
     } catch (error) {
       console.error('Failed to initialize Tree-sitter:', error);
       throw error;
@@ -264,8 +264,8 @@ export class TreeSitterParser {
   async parse(code: string, language: SupportedLanguage, filePath: string): Promise<ParseResult> {
     await this.initialize();
 
-    const ast = this.createMockAST(code, language);
-    const metadata = this.extractMetadata(ast, code, language, filePath);
+    const ast = this._createMockAST(code, language);
+    const metadata = this._extractMetadata(ast, code, language, filePath);
 
     return {
       ast,
@@ -275,7 +275,7 @@ export class TreeSitterParser {
     };
   }
 
-  private createMockAST(code: string, language: SupportedLanguage): ASTNode {
+  private _createMockAST(code: string, language: SupportedLanguage): ASTNode {
     const lines = code.split('\n');
 
     const rootNode: ASTNode = {
@@ -288,23 +288,23 @@ export class TreeSitterParser {
       children: [],
     };
 
-    this.addMockNodes(rootNode, code, language);
+    this._addMockNodes(rootNode, code, language);
 
     return rootNode;
   }
 
-  private addMockNodes(parentNode: ASTNode, code: string, language: SupportedLanguage): void {
+  private _addMockNodes(parentNode: ASTNode, code: string, language: SupportedLanguage): void {
     const lines = code.split('\n');
 
     lines.forEach((line, lineIndex) => {
       const trimmedLine = line.trim();
 
-      if (this.isFunctionLine(trimmedLine, language)) {
-        const funcName = this.extractFunctionNameFromLine(trimmedLine, language);
+      if (this._isFunctionLine(trimmedLine, language)) {
+        const funcName = this._extractFunctionNameFromLine(trimmedLine, language);
 
         if (funcName) {
           const funcNode: ASTNode = {
-            type: this.getFunctionNodeType(language),
+            type: this._getFunctionNodeType(language),
             text: trimmedLine,
             startLine: lineIndex,
             startCol: line.indexOf(trimmedLine),
@@ -317,12 +317,12 @@ export class TreeSitterParser {
         }
       }
 
-      if (this.isClassLine(trimmedLine, language)) {
-        const className = this.extractClassNameFromLine(trimmedLine, language);
+      if (this._isClassLine(trimmedLine, language)) {
+        const className = this._extractClassNameFromLine(trimmedLine, language);
 
         if (className) {
           const classNode: ASTNode = {
-            type: this.getClassNodeType(language),
+            type: this._getClassNodeType(language),
             text: trimmedLine,
             startLine: lineIndex,
             startCol: line.indexOf(trimmedLine),
@@ -335,9 +335,9 @@ export class TreeSitterParser {
         }
       }
 
-      if (this.isImportLine(trimmedLine, language)) {
+      if (this._isImportLine(trimmedLine, language)) {
         const importNode: ASTNode = {
-          type: this.getImportNodeType(language),
+          type: this._getImportNodeType(language),
           text: trimmedLine,
           startLine: lineIndex,
           startCol: line.indexOf(trimmedLine),
@@ -350,7 +350,7 @@ export class TreeSitterParser {
     });
   }
 
-  private isFunctionLine(line: string, language: SupportedLanguage): boolean {
+  private _isFunctionLine(line: string, language: SupportedLanguage): boolean {
     if (language === 'java') {
       return (
         (line.includes('public') || line.includes('private') || line.includes('protected')) &&
@@ -399,7 +399,7 @@ export class TreeSitterParser {
     return patterns[language]?.test(line) || false;
   }
 
-  private isClassLine(line: string, language: SupportedLanguage): boolean {
+  private _isClassLine(line: string, language: SupportedLanguage): boolean {
     if (language === 'java') {
       return line.includes('class') || line.includes('interface') || line.includes('enum');
     }
@@ -426,7 +426,7 @@ export class TreeSitterParser {
     return patterns[language]?.test(line) || false;
   }
 
-  private isImportLine(line: string, language: SupportedLanguage): boolean {
+  private _isImportLine(line: string, language: SupportedLanguage): boolean {
     const patterns: Partial<Record<SupportedLanguage, RegExp>> = {
       javascript: /^(import|require)\s+/,
       typescript: /^(import|require)\s+/,
@@ -459,7 +459,7 @@ export class TreeSitterParser {
     return patterns[language]?.test(line) || false;
   }
 
-  private extractFunctionNameFromLine(line: string, language: SupportedLanguage): string | null {
+  private _extractFunctionNameFromLine(line: string, language: SupportedLanguage): string | null {
     const patterns: Partial<Record<SupportedLanguage, RegExp>> = {
       javascript: /(?:function|const|let|var)\s+(\w+)/,
       typescript: /(?:function|const|let|var)\s+(\w+)/,
@@ -498,7 +498,7 @@ export class TreeSitterParser {
     return match ? match[1] || match[2] : null;
   }
 
-  private extractClassNameFromLine(line: string, language: SupportedLanguage): string | null {
+  private _extractClassNameFromLine(line: string, language: SupportedLanguage): string | null {
     const patterns: Partial<Record<SupportedLanguage, RegExp>> = {
       javascript: /class\s+(\w+)/,
       typescript: /(?:class|interface)\s+(\w+)/,
@@ -523,7 +523,7 @@ export class TreeSitterParser {
     return match ? match[1] : null;
   }
 
-  private getFunctionNodeType(language: SupportedLanguage): string {
+  private _getFunctionNodeType(language: SupportedLanguage): string {
     const types: Partial<Record<SupportedLanguage, string>> = {
       javascript: 'function_declaration',
       typescript: 'function_declaration',
@@ -560,7 +560,7 @@ export class TreeSitterParser {
     return types[language] || 'function_declaration';
   }
 
-  private getClassNodeType(language: SupportedLanguage): string {
+  private _getClassNodeType(language: SupportedLanguage): string {
     const types: Partial<Record<SupportedLanguage, string>> = {
       javascript: 'class_declaration',
       typescript: 'class_declaration',
@@ -583,7 +583,7 @@ export class TreeSitterParser {
     return types[language] || 'class_declaration';
   }
 
-  private getImportNodeType(language: SupportedLanguage): string {
+  private _getImportNodeType(language: SupportedLanguage): string {
     const types: Partial<Record<SupportedLanguage, string>> = {
       javascript: 'import_statement',
       typescript: 'import_statement',
@@ -616,11 +616,11 @@ export class TreeSitterParser {
     return types[language] || 'import_statement';
   }
 
-  private extractMetadata(
+  private _extractMetadata(
     ast: ASTNode,
     code: string,
     language: SupportedLanguage,
-    filePath: string,
+    _filePath: string,
   ): ParseResult['metadata'] {
     const metadata: ParseResult['metadata'] = {
       functions: [],
@@ -663,7 +663,7 @@ export class TreeSitterParser {
       }
     }
 
-    this.traverseAST(ast, metadata, code, language);
+    this._traverseAST(ast, metadata, code, language);
 
     // Calculate basic metrics
     const lines = code.split('\n');
@@ -676,7 +676,7 @@ export class TreeSitterParser {
     return metadata;
   }
 
-  private traverseAST(
+  private _traverseAST(
     node: ASTNode,
     metadata: ParseResult['metadata'],
     code: string,
@@ -684,7 +684,7 @@ export class TreeSitterParser {
   ): void {
     // Extract functions
     if (node.type.includes('function') || node.type.includes('method')) {
-      const funcInfo = this.extractFunctionInfo(node, code, language, metadata);
+      const funcInfo = this._extractFunctionInfo(node, code, language, metadata);
 
       if (funcInfo) {
         metadata.functions.push(funcInfo);
@@ -693,7 +693,7 @@ export class TreeSitterParser {
 
     // Extract classes
     if (node.type.includes('class') || node.type.includes('struct') || node.type.includes('interface')) {
-      const classInfo = this.extractClassInfo(node, code, language, metadata);
+      const classInfo = this._extractClassInfo(node, code, language, metadata);
 
       if (classInfo) {
         metadata.classes.push(classInfo);
@@ -702,7 +702,7 @@ export class TreeSitterParser {
 
     // Extract imports
     if (node.type.includes('import') || node.type.includes('use') || node.type.includes('require')) {
-      const importInfo = this.extractImportInfo(node, code, language);
+      const importInfo = this._extractImportInfo(node, code, language);
 
       if (importInfo) {
         metadata.imports.push(importInfo);
@@ -711,18 +711,18 @@ export class TreeSitterParser {
 
     // Traverse children
     for (const child of node.children) {
-      this.traverseAST(child, metadata, code, language);
+      this._traverseAST(child, metadata, code, language);
     }
   }
 
-  private extractFunctionInfo(
+  private _extractFunctionInfo(
     node: ASTNode,
-    code: string,
-    language: SupportedLanguage,
-    metadata: ParseResult['metadata'],
+    _code: string,
+    _language: SupportedLanguage,
+    _metadata: ParseResult['metadata'],
   ): FunctionInfo | null {
     try {
-      const name = node.metadata?.name || `function_${++this.functionCounter}`;
+      const name = node.metadata?.name || `function_${++this._functionCounter}`;
 
       return {
         name,
@@ -740,14 +740,14 @@ export class TreeSitterParser {
     }
   }
 
-  private extractClassInfo(
+  private _extractClassInfo(
     node: ASTNode,
-    code: string,
-    language: SupportedLanguage,
-    metadata: ParseResult['metadata'],
+    _code: string,
+    _language: SupportedLanguage,
+    _metadata: ParseResult['metadata'],
   ): ClassInfo | null {
     try {
-      const name = node.metadata?.name || `class_${++this.classCounter}`;
+      const name = node.metadata?.name || `class_${++this._classCounter}`;
 
       return {
         name,
@@ -765,7 +765,7 @@ export class TreeSitterParser {
     }
   }
 
-  private extractImportInfo(node: ASTNode, code: string, language: SupportedLanguage): ImportInfo | null {
+  private _extractImportInfo(node: ASTNode, code: string, language: SupportedLanguage): ImportInfo | null {
     try {
       const line = node.text.trim();
       let module = 'unknown_module';

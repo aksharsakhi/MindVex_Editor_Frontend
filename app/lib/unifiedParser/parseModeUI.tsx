@@ -49,7 +49,6 @@ export function ParseModeSelector({
   showModelSelector = true,
   className = '',
 }: ParseModeSelectorProps) {
-  const parseMode = useStore(parseModeStore);
   const providers = useStore(providersStore);
 
   const isLLMMode = isLLMEnhancedMode();

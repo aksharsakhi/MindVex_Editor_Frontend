@@ -69,7 +69,7 @@ export interface ProjectAnalysis {
 }
 
 // Zod schemas for LLM analysis
-const CodePatternSchema = z.object({
+const codePatternSchema = z.object({
   type: z.string(),
   name: z.string(),
   line: z.number(),
@@ -77,9 +77,9 @@ const CodePatternSchema = z.object({
   severity: z.enum(['info', 'warning', 'error']),
 });
 
-const LLMAnalysisSchema = z.object({
+const llmAnalysisSchema = z.object({
   summary: z.string(),
-  patterns: z.array(CodePatternSchema),
+  patterns: z.array(codePatternSchema),
   recommendations: z.array(z.string()),
   complexity: z.object({
     score: z.number(),
@@ -117,43 +117,43 @@ const LLMAnalysisSchema = z.object({
 });
 
 export class UnifiedParserService {
-  private parser: TreeSitterParser;
-  private mode: ParseMode = { type: 'parser-only' };
-  private aiClient: AIClient;
+  private _parser: TreeSitterParser;
+  private _mode: ParseMode = { type: 'parser-only' };
+  private _aiClient: AIClient;
 
   constructor(parser: TreeSitterParser) {
-    this.parser = parser;
-    this.aiClient = new AIClient();
+    this._parser = parser;
+    this._aiClient = new AIClient();
   }
 
   setMode(mode: ParseMode): void {
-    this.mode = mode;
+    this._mode = mode;
   }
 
   getMode(): ParseMode {
-    return this.mode;
+    return this._mode;
   }
 
   async parseCode(code: string, filePath: string): Promise<EnhancedParseResult> {
-    const language = this.parser.getLanguageFromExtension(filePath);
+    const language = this._parser.getLanguageFromExtension(filePath);
 
     if (!language) {
       throw new Error(`Unsupported file type: ${filePath}`);
     }
 
-    const startTime = Date.now();
+    const analysisStartTime = Date.now();
 
     // Parse with tree-sitter
-    const parseResult = await this.parser.parse(code, language, filePath);
+    const parseResult = await this._parser.parse(code, language, filePath);
 
     let llmAnalysis: LLMAnalysis | undefined;
 
     // Perform LLM analysis if in LLM-enhanced mode
-    if (this.mode.type === 'llm-enhanced') {
-      llmAnalysis = await this.performLLMAnalysis(code, parseResult.metadata, filePath, language);
+    if (this._mode.type === 'llm-enhanced') {
+      llmAnalysis = await this._performLLMAnalysis(code, parseResult.metadata, filePath, language);
     }
 
-    const analysisTime = Date.now() - startTime;
+    const analysisTime = Date.now() - analysisStartTime;
 
     return {
       ...parseResult,
@@ -163,7 +163,6 @@ export class UnifiedParserService {
   }
 
   async parseProject(files: Array<{ path: string; content: string }>): Promise<ProjectAnalysis> {
-    const startTime = Date.now();
     const results: EnhancedParseResult[] = [];
 
     // Parse all files
@@ -177,13 +176,13 @@ export class UnifiedParserService {
     }
 
     // Calculate project metadata
-    const projectMetadata = this.calculateProjectMetadata(results);
+    const projectMetadata = this._calculateProjectMetadata(results);
 
     let llmAnalysis: LLMAnalysis | undefined;
 
     // Perform project-level LLM analysis if in LLM-enhanced mode
-    if (this.mode.type === 'llm-enhanced') {
-      llmAnalysis = await this.performProjectLLMAnalysis(results, projectMetadata);
+    if (this._mode.type === 'llm-enhanced') {
+      llmAnalysis = await this._performProjectLLMAnalysis(results, projectMetadata);
     }
 
     return {
@@ -193,7 +192,7 @@ export class UnifiedParserService {
     };
   }
 
-  private calculateProjectMetadata(results: EnhancedParseResult[]): ProjectAnalysis['projectMetadata'] {
+  private _calculateProjectMetadata(results: EnhancedParseResult[]): ProjectAnalysis['projectMetadata'] {
     const languages: Record<SupportedLanguage, number> = {} as Record<SupportedLanguage, number>;
     let totalLines = 0;
     let totalFunctions = 0;
@@ -238,13 +237,13 @@ export class UnifiedParserService {
     };
   }
 
-  private async performLLMAnalysis(
+  private async _performLLMAnalysis(
     code: string,
     metadata: ParseResult['metadata'],
     filePath: string,
     language: string,
   ): Promise<LLMAnalysis> {
-    if (this.mode.type !== 'llm-enhanced') {
+    if (this._mode.type !== 'llm-enhanced') {
       throw new Error('LLM analysis not available in parser-only mode');
     }
 
@@ -267,11 +266,11 @@ Lines: ${metadata.linesOfCode}`;
 }
 Only return the JSON object, no other text.`;
 
-      const response = await this.aiClient.analyzeCode(code, context, {
+      const response = await this._aiClient.analyzeCode(code, context, {
         system,
-        model: this.mode.model,
-        temperature: this.mode.temperature,
-        maxTokens: this.mode.maxTokens,
+        model: this._mode.model,
+        temperature: this._mode.temperature,
+        maxTokens: this._mode.maxTokens,
       });
 
       try {
@@ -280,25 +279,25 @@ Only return the JSON object, no other text.`;
 
         if (jsonMatch) {
           const analysis = JSON.parse(jsonMatch[0]);
-          return LLMAnalysisSchema.parse(analysis);
+          return llmAnalysisSchema.parse(analysis);
         }
 
         throw new Error('No JSON found in AI response');
-      } catch (e) {
-        console.warn('AI response parsing failed, using mock data:', e);
-        return this.generateMockLLMAnalysis(code, metadata, filePath);
+      } catch (_err) {
+        console.warn('AI response parsing failed, using mock data:', _err);
+        return this._generateMockLLMAnalysis(code, metadata, filePath);
       }
     } catch (error) {
       console.error('LLM analysis failed:', error);
-      return this.generateFallbackLLMAnalysis(metadata);
+      return this._generateFallbackLLMAnalysis(metadata);
     }
   }
 
-  private async performProjectLLMAnalysis(
+  private async _performProjectLLMAnalysis(
     results: EnhancedParseResult[],
     projectMetadata: ProjectAnalysis['projectMetadata'],
   ): Promise<LLMAnalysis> {
-    if (this.mode.type !== 'llm-enhanced') {
+    if (this._mode.type !== 'llm-enhanced') {
       throw new Error('LLM analysis not available in parser-only mode');
     }
 
@@ -392,12 +391,12 @@ Rules:
 
       console.log('Sending AI request...');
 
-      const response = await this.aiClient.generate({
+      const response = await this._aiClient.generate({
         prompt: context,
         system,
-        model: this.mode.model,
+        model: this._mode.model,
         temperature: 0, // Strict deterministic output
-        maxTokens: this.mode.maxTokens,
+        maxTokens: this._mode.maxTokens,
       });
 
       console.log('RAW AI RESPONSE:', response.text);
@@ -427,12 +426,12 @@ Rules:
           parsed = JSON.parse(jsonStr);
         } catch (err) {
           console.error('AI JSON parsing failed:', response.text);
-          return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+          return this._generateMockProjectLLMAnalysis(results, projectMetadata);
         }
 
         if (!parsed.graph || !parsed.graph.nodes || !parsed.graph.edges) {
           console.error('AI returned invalid structure:', parsed);
-          return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+          return this._generateMockProjectLLMAnalysis(results, projectMetadata);
         }
 
         console.log('Parsed AI Analysis:', parsed);
@@ -443,23 +442,23 @@ Rules:
          * For now, assuming schema matches output format
          */
 
-        const validated = LLMAnalysisSchema.parse(parsed);
+        const validated = llmAnalysisSchema.parse(parsed);
         console.log('Validated AI Analysis:', validated);
 
         return validated;
       } catch (e) {
         console.error('Project AI response parsing failed:', e, 'Response was:', response.text);
-        return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+        return this._generateMockProjectLLMAnalysis(results, projectMetadata);
       }
     } catch (error) {
       console.error('Project LLM analysis failed:', error);
 
       // Fallback to AST-based graph generation so the user always sees a graph
-      return this.generateMockProjectLLMAnalysis(results, projectMetadata);
+      return this._generateMockProjectLLMAnalysis(results, projectMetadata);
     }
   }
 
-  private generateMockLLMAnalysis(code: string, metadata: ParseResult['metadata'], filePath: string): LLMAnalysis {
+  private _generateMockLLMAnalysis(code: string, metadata: ParseResult['metadata'], filePath: string): LLMAnalysis {
     const complexityScore = Math.min(
       100,
       (metadata.functions.reduce((sum, func) => sum + func.complexity, 0) / Math.max(1, metadata.functions.length)) *
@@ -505,7 +504,7 @@ Rules:
     };
   }
 
-  private generateMockProjectLLMAnalysis(
+  private _generateMockProjectLLMAnalysis(
     results: EnhancedParseResult[],
     projectMetadata: ProjectAnalysis['projectMetadata'],
   ): LLMAnalysis {
@@ -587,7 +586,7 @@ Rules:
     };
   }
 
-  private generateFallbackLLMAnalysis(metadata: ParseResult['metadata']): LLMAnalysis {
+  private _generateFallbackLLMAnalysis(_metadata: ParseResult['metadata']): LLMAnalysis {
     return {
       summary: 'Basic code analysis completed',
       patterns: [],
@@ -609,7 +608,7 @@ Rules:
     };
   }
 
-  private generateFallbackProjectLLMAnalysis(projectMetadata: ProjectAnalysis['projectMetadata']): LLMAnalysis {
+  private _generateFallbackProjectLLMAnalysis(projectMetadata: ProjectAnalysis['projectMetadata']): LLMAnalysis {
     return {
       summary: 'Project analysis completed with basic parsing',
       patterns: [],
@@ -632,11 +631,11 @@ Rules:
   }
 
   getSupportedLanguages(): SupportedLanguage[] {
-    return this.parser.getSupportedLanguages();
+    return this._parser.getSupportedLanguages();
   }
 
   isLanguageSupported(language: string): language is SupportedLanguage {
-    return this.parser.isLanguageSupported(language);
+    return this._parser.isLanguageSupported(language);
   }
 }
 
