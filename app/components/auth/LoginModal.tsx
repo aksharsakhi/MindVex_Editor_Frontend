@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogRoot } from '~/components/ui/Dialog';
 import { GitHubButton } from './GitHubButton';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { Eye, EyeOff } from 'lucide-react';
 import { setAuth } from '~/lib/stores/authStore';
 
@@ -20,6 +21,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const canSubmit =
     email.trim().length > 3 && password.trim().length >= 6 && (isSignUp ? fullName.trim().length > 0 : true);
   const handleSubmit = async () => {
@@ -110,7 +112,18 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             )}
 
             <div className="flex flex-col gap-2 relative">
-              <label className="text-[11px] font-bold text-gray-300 tracking-wide">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-gray-300 tracking-wide">Password</label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-[11px] text-orange-500 hover:text-orange-400 transition-colors font-medium"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -178,6 +191,9 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           </p>
         </div>
       </Dialog>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal isOpen={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
     </DialogRoot>
   );
 }

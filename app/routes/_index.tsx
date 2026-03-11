@@ -1,5 +1,6 @@
 import { json, type MetaFunction } from '@remix-run/cloudflare';
 import React from 'react';
+import { useSearchParams } from '@remix-run/react';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { ClientOnly } from 'remix-utils/client-only';
 import { Header } from '~/components/header/Header';
@@ -29,6 +30,18 @@ import { LoginModal } from '~/components/auth/LoginModal';
  */
 export default function Index() {
   const auth = useStore(authStore);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showLoginParam = searchParams.get('showLogin') === 'true';
+
+  // Clear the showLogin param after reading it
+  React.useEffect(() => {
+    if (showLoginParam) {
+      setSearchParams((prev) => {
+        prev.delete('showLogin');
+        return prev;
+      });
+    }
+  }, [showLoginParam, setSearchParams]);
 
   return (
     <div className="flex flex-col h-full w-full bg-mindvex-elements-background-depth-1">
@@ -64,8 +77,8 @@ export default function Index() {
                 {/* Workbench — fills entire area when shown */}
                 <Workbench chatStarted={true} isStreaming={false} />
 
-                {/* Login Modal */}
-                {!auth.isLoading && <LoginModal isOpen={!auth.isAuthenticated} />}
+                {/* Login Modal - auto-open if showLogin param present or user not authenticated */}
+                {!auth.isLoading && <LoginModal isOpen={!auth.isAuthenticated || showLoginParam} />}
               </div>
             );
           }}
